@@ -39,27 +39,26 @@ def flatten_data(df: pd.DataFrame) -> pd.DataFrame:
         for tillfalle in graderings_tillfallen:
             datum_str   = tillfalle.get('graderingsdatum')
             date_parsed = pd.to_datetime(datum_str, errors='coerce') if datum_str else None
+            development_stage = tillfalle.get('utvecklingsstadium')
 
             graderingar = tillfalle.get('graderingList', [])
             for g in graderingar:
                 pest_name = g.get('skadegorare')
-                varde_str = g.get('varde')
-                value     = pd.to_numeric(varde_str, errors='coerce') if varde_str is not None else None
+                value = g.get('varde')
                 measuring_method = g.get('matmetod')
-
-                if value is None:
-                    continue
 
                 if pest_name not in pest_groups:
                     pest_groups[pest_name] = {
                         "timestamps": [],
                         "measurement_values": [],
-                        "measuring_methods": set()
+                        "measuring_methods": set(),
+                        "development_stages": []
                     }
 
                 pest_groups[pest_name]["timestamps"].append(date_parsed)
                 pest_groups[pest_name]["measurement_values"].append(value)
                 pest_groups[pest_name]["measuring_methods"].add(measuring_method)
+                pest_groups[pest_name]["development_stages"].append(development_stage)
 
         for pest_name, measurements in pest_groups.items():
             records.append({
@@ -80,7 +79,8 @@ def flatten_data(df: pd.DataFrame) -> pd.DataFrame:
                 "pest": pest_name,
                 "measuring_methods": list(measurements["measuring_methods"]),
                 "timestamps": measurements["timestamps"],
-                "measurement_values": measurements["measurement_values"]
+                "measurement_values": measurements["measurement_values"],
+                "development_stages": measurements["development_stages"]
             })
 
     return pd.DataFrame(records)
