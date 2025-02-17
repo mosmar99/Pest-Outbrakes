@@ -71,6 +71,7 @@ def coordinate_rowfilter(data_df, latitud, longitud):
 def transform_date(data_df):
     """
     Converts 'graderingsdatum' to datetime and introduces NaN values for large gaps.
+    Averages data if there are multiple measurements during the same week.
 
     Args:
         data_df (pd.DataFrame): The input dataframe containing date-related data.
@@ -82,8 +83,14 @@ def transform_date(data_df):
     data_df['graderingsdatum'] = pd.to_datetime(data_df['graderingsdatum'])
 
     # prune nonexisting dates
-    threshold = pd.Timedelta(days=14)
+    threshold = pd.Timedelta(days=30)
     gap = data_df['graderingsdatum'].diff() > threshold
     data_df.loc[gap, ['varde', 'utvecklingsstadium']] = np.nan
+
+    # average by week
+    data_df.set_index('graderingsdatum', inplace=True)
+    numeric_cols = data_df.select_dtypes(include=[np.number]).columns
+    data_df = data_df[numeric_cols].resample('W-MON').mean()
+    data_df.reset_index(inplace=True)
 
     return data_df
