@@ -21,6 +21,12 @@ import numpy as np
 
 import chardet
 
+import geopandas as gpd
+
+SMHI_URI = {
+    "all_parameters": "https://opendata-download-metobs.smhi.se/api/version/latest/parameter.json",
+    "all_stations": "https://opendata-download-metobs.smhi.se/api/version/latest/parameter",
+}
 
 @staticmethod
 def fetch_data(endpoint):
@@ -48,6 +54,17 @@ def fetch_data(endpoint):
     else:
         print(f"Error: {response.status_code} - {response.text}")
         return None
+    
+def fetch_data_on_key(endpoint, json_key):
+    response = requests.get(endpoint)
+
+    if response.status_code == 200:
+        data = response.json()
+        df = pd.DataFrame(data[json_key])
+        return df
+    else:
+        print(f"Error: {response.status_code} - {response.text}")
+        return None
 
 @staticmethod
 def get_meter_distance(point1, point2):
@@ -63,49 +80,44 @@ def get_meter_distance(point1, point2):
     """
     return geodesic(point1[::-1], point2[::-1]).meters
 
-def find_closest_station(df_stations, df_single_gradings):
-    """ 
-    Finds closest stations to JBV dataframe point
+def find_closest_station(jbv_gdf, param_id, from_date, to_date):
+    smhi_stations_gdf = get_all_stations_on_parameter_id(param_id=param_id, measuringStations="CORE", from_date=from_date, to_date=to_date)
+
+    # Convert to estimated UTM CRS to achieve accuracy in distances
+    utm_crs = jbv_gdf.estimate_utm_crs()
+    jbv_gdf = jbv_gdf.to_crs(utm_crs)
+    smhi_stations_gdf = smhi_stations_gdf.to_crs(utm_crs)
+    # Keep station point for plotting
+    smhi_stations_gdf["station_loc"] = smhi_stations_gdf["geometry"]
+
+    # Perform Spatial join by nearest neighbour
+    jbv_gdf = jbv_gdf.sjoin_nearest(smhi_stations_gdf, how="left")
+    return jbv_gdf, pd.unique(jbv_gdf["key"])
+
+
+def get_all_stations_on_parameter_id(param_id="19", measuringStations=None, from_date=None, to_date=None):
+    df = fetch_data_on_key(f'{SMHI_URI["all_stations"]}/{param_id}.json', "station")
+
+    gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326")
+    gdf = gdf.drop(['latitude','longitude', 'summary', 'link', 'id'], axis=1)
+
+    gdf['updated'] = pd.to_datetime(gdf['updated'], unit="ms")
+    gdf['from'] = pd.to_datetime(gdf['from'], unit="ms")
+    gdf['to'] = pd.to_datetime(gdf['to'], unit="ms")
+
+    if measuringStations:
+        measuringStations_mask = gdf["measuringStations"] == measuringStations
+        gdf = gdf[measuringStations_mask]
+
+    if from_date:
+        from_mask = gdf['from'] < pd.to_datetime(from_date)
+        gdf = gdf[from_mask]
     
-    Args:
-        df_stations (DataFrame): DataFrame containing our SMHI Stations
-        df_single_gradings (DataFrame): DataFrame Containing a single JBV datapoint
+    if to_date:
+        to_mask = gdf['to'] > pd.to_datetime(to_date)
+        gdf = gdf[to_mask]
     
-    Return:
-        List(float, int): Sorted list of tuples with regards to the meter value distance, tuple:(distance, station_key)
-    """
-
-    station_keys = df_stations['key']
-    to_find = float(df_single_gradings['longitud']), float(df_single_gradings['latitud'])
-    long_lat = list(zip(df_stations['longitude'], df_stations['latitude']))
-
-    cl = []
-    for i, station in enumerate(station_keys):
-        dist = get_meter_distance(to_find, long_lat[i])
-        cl.append((dist, station))
-
-    cl = sorted(cl, key=lambda x: x[0])
-    return cl
-
-def get_stations_per_parameter(param):
-    """ 
-    Returns all stations for some specified parameter
-    
-    Args:
-        param (int): SMHI Parameter
-    
-    Return:
-        DataFrame: Contaning available stations for specified parameter
-    """
-
-    df = None
-    try:
-        endpoint = f"https://opendata-download-metobs.smhi.se/api/version/latest/parameter/{param}.json"
-        df = fetch_data(endpoint=endpoint)
-    except:
-        print("Invalid parameter")
-    return df
-
+    return gdf
 
 @staticmethod
 def fetch_station_data(station_key, parameter):
@@ -223,7 +235,7 @@ def get_for_station_for_parameter(station_key, parameter, to_date):
 
 
 
-def get_data_from_closest_station(cl, param, to_date):
+def get_data_from_closest_station(unique_keys, param_id, to_date):
     """
     Gets DataFrame with data from the closest station that has data within our time interval.
 
@@ -235,12 +247,7 @@ def get_data_from_closest_station(cl, param, to_date):
     Returns:
         DataFrame: data of the closest station that has data wihtin our time interval. None if none of the stations had data within interval
     """
-    
-    for index, (_ , station_key) in enumerate(cl):
-        df = get_for_station_for_parameter(station_key, param, to_date)
-        if df is not None:
-            return df
-    return None
+    return {key: get_for_station_for_parameter(key, param_id, to_date) for key in unique_keys}
 
 def get_date_interval_from_data(data, to_date, from_date):
     """
@@ -254,7 +261,7 @@ def get_date_interval_from_data(data, to_date, from_date):
     Returns:
         DataFrame: filtered data with regards to specified bounds
     """
-
+    
     data['Från Datum Tid (UTC)'] = pd.to_datetime(data['Från Datum Tid (UTC)'], errors='coerce')
     data['Till Datum Tid (UTC)'] = pd.to_datetime(data['Till Datum Tid (UTC)'], errors='coerce')
 
@@ -269,21 +276,107 @@ if __name__ == "__main__":
     """
     Example usage of module
     """
-
-    # Get all stations for parameter 19 (Lufttemperatur)
-    df_stations = get_stations_per_parameter(19)
-
-    # Specifications of dates, we are interested in
     from_date = '2020-01-01'
     to_date = '2021-01-01'
 
-    # Get Gradings from JBV API
     gradings_df = api.get_gradings(from_date=from_date, to_date=to_date)
-    gradings_df = api.sweref99tm_to_wgs84(gradings_df)
 
-    # Extract the first row / data point
-    first_row = gradings_df.iloc[0]
+    jbv_gdf = gpd.GeoDataFrame(gradings_df, geometry=gpd.points_from_xy(gradings_df.longitud, gradings_df.latitud), crs="EPSG:3006")
+    jbv_gdf["geometry"] = jbv_gdf["geometry"].to_crs("EPSG:4326")
 
-    cl = find_closest_station(df_stations, first_row)
-    ret = get_data_from_closest_station(cl, 19, to_date)
-    fd  = get_date_interval_from_data(ret, to_date, from_date)
+    jbv_gdf, unique_keys = find_closest_station(jbv_gdf, "19", from_date, to_date)
+    print(unique_keys)
+
+    station_data = get_data_from_closest_station(unique_keys, "19", to_date)
+
+    fd = {key: get_date_interval_from_data(value, to_date, from_date) for key, value in station_data.items() if value is not None}
+    print(fd)
+
+    first_key = next(iter(fd))
+    head = fd[first_key]
+    print(head['Lufttemperatur'])
+
+    def extract_pest(df: pd.DataFrame, pest: str) -> pd.DataFrame:
+        """
+        Look through df and extract data from 'graderingstillfalleList'.
+        Extract records where 'skadegorare' == pest,
+        Also adding other relevant information such as delomrade, lat-lon coordinates
+        Needed since graderingslist is a list containing all measure instances for a given time period (year)
+        """
+
+        records = []
+
+        for idx, row in df.iterrows():
+            graderings_tillfallen = row.get('graderingstillfalleList', [])
+            if not isinstance(graderings_tillfallen, list):
+                continue
+
+            #get area name, lat/long, etc
+            delomrade_val = row.get('delomrade')
+            lat_val = row.get('latitud')
+            lon_val = row.get('longitud')
+            crop = row.get('groda')
+            sort = row.get('sort')
+
+            for tillfalle in graderings_tillfallen:
+                datum_str = tillfalle.get('graderingsdatum')
+                datum_parsed = pd.to_datetime(datum_str, errors='coerce') if datum_str else None
+                year = datum_parsed.year if pd.notnull(datum_parsed) else None
+
+                graderingar = tillfalle.get('graderingList', [])
+                for g in graderingar:
+                    if g.get('skadegorare') == pest:
+                        varde_str = g.get('varde')
+                        value = pd.to_numeric(varde_str, errors='coerce') if varde_str is not None else None
+                        measuring_method = g.get('matmetod')
+
+                        records.append({
+                            "index_in_main_df": idx,
+                            "delomrade": delomrade_val,
+                            "latitud": lat_val,
+                            "longitud": lon_val,
+                            "date": datum_parsed,
+                            "year": year,
+                            "crop": crop,
+                            "type": sort,
+                            "pest": pest,
+                            "measuring_method": measuring_method,
+                            "value": value
+                        })
+
+        return pd.DataFrame(records)
+    
+
+    df_bf = extract_pest(jbv_gdf.head(), 'Bladlus')
+    df_bf = df_bf.sort_values(by='date')
+
+    head['Lufttemperatur'] = pd.to_numeric(head['Lufttemperatur'], errors='coerce')
+
+    vector_size = 11
+    stddev = 2
+
+    weights = np.exp(-0.5 * (np.linspace(-stddev, stddev, vector_size) ** 2))
+    weights = weights / np.sum(weights)
+
+    smoothed_temperature = np.convolve(head['Lufttemperatur'], weights, mode='same')
+    head['Lufttemperatur'] = smoothed_temperature
+
+    start_range = pd.to_datetime(from_date)
+    end_range = pd.to_datetime(to_date)
+
+    smoothed_temperature = np.convolve(df_bf['value'], weights, mode='same')
+    df_bf['value'] = smoothed_temperature
+    filtered_data = head[(head['Från Datum Tid (UTC)'] >= start_range) & (head['Till Datum Tid (UTC)'] <= end_range)]
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(filtered_data['Från Datum Tid (UTC)'], filtered_data['Lufttemperatur'], linestyle='-', color='b', label='Temperature (°C)')
+    plt.plot(df_bf['date'], df_bf['value'], color='g', label='Bladlus (antal)')
+
+    plt.xlabel('Date')
+    plt.ylabel('Temperature (°C)')
+    plt.title('Temperature Over Time (Filtered)')
+    plt.legend()
+    plt.grid(True)
+    plt.xticks(rotation=45)
+
+    plt.show()
