@@ -5,19 +5,12 @@ import matplotlib.pyplot as plt
 import sys
 import os
 
-from io import StringIO
-
 parent_dir = os.path.relpath("../")
 
 sys.path.append(parent_dir)
 
 import api
-
-import datetime
-
-import numpy as np
 import csv
-# import chardet
 
 import geopandas as gpd
 
@@ -25,35 +18,18 @@ SMHI_URI = {
     "all_parameters": "https://opendata-download-metobs.smhi.se/api/version/latest/parameter.json",
     "all_stations": "https://opendata-download-metobs.smhi.se/api/version/latest/parameter",
 }
-
-# @staticmethod
-# def fetch_data(endpoint):
-#     """
-#     Fetches data from SMHI endpoint
-    
-#     Args:
-#         endpoint (string): endpoint for the SMHI api
-    
-#     Returns:
-#         DataFrame: if call was successful otherwise None
-#     """
-
-#     response = requests.get(endpoint)
-
-#     if response.status_code == 200:
-#         data = response.json() 
-
-#         if "station" in data: 
-#             df = pd.DataFrame(data["station"])
-#             return df
-#         else:
-#             print("Unexpected JSON structure:", data)
-#             return None
-#     else:
-#         print(f"Error: {response.status_code} - {response.text}")
-#         return None
     
 def fetch_data_on_key(endpoint, json_key):
+    """
+    Get Dataframe for stations that have parameter id within timeframe.
+
+    Args:
+        endpoint (String): Api endpoint string.
+        json_key (String): Key for nested json in SMHI data.
+        
+    Returns:
+        DataFrame: DataFrame with nested json contents,
+    """
     response = requests.get(endpoint)
 
     if response.status_code == 200:
@@ -65,6 +41,18 @@ def fetch_data_on_key(endpoint, json_key):
         return None
 
 def get_stations_on_parameter_id(param_id="19", measuringStations=None, from_date=None, to_date=None):
+    """
+    Get Dataframe for stations that have parameter id within timeframe.
+
+    Args:
+        jbv_gdf (GeoDataFrame): JBV reference data.
+        param_id (String): Parameter id in SMHI API.
+        from_date (String): Fromdate, for checking avalibility in station.
+        to_date (String): Fromdate, for checking avalibility in station.
+        
+    Returns:
+        GeoDataFrame: GeoDataFrame with SMHI Stations for timeframe and parameter id.
+    """
     df = fetch_data_on_key(f'{SMHI_URI["all_stations"]}/{param_id}.json', "station")
 
     gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326")
@@ -89,104 +77,72 @@ def get_stations_on_parameter_id(param_id="19", measuringStations=None, from_dat
     return gdf
 
 def find_closest_stations(jbv_gdf, param_id, from_date, to_date):
+    """
+    Get SMHI data, If dowloaded get from local copy else Download new SMHI data to local and read.
+
+    Args:
+        jbv_gdf (GeoDataFrame): JBV reference data
+        param_id (String): Parameter id in SMHI API.
+        from_date (String): Fromdate, for checking avalibility in station
+        to_date (String): Fromdate, for checking avalibility in station
+        
+    Returns:
+        tuple(GeoDataFrame, List): GeoDataFrame with SMHI Station key and location appended, List of unique station keys's.
+    """
     smhi_stations_gdf = get_stations_on_parameter_id(param_id=param_id, measuringStations="CORE", from_date=from_date, to_date=to_date)
 
-    print(smhi_stations_gdf.crs)
-    print(jbv_gdf.crs)
     # Convert to estimated UTM CRS to achieve accuracy in distances
     utm_crs = jbv_gdf.estimate_utm_crs()
     jbv_gdf = jbv_gdf.to_crs(utm_crs)
     smhi_stations_gdf = smhi_stations_gdf.to_crs(utm_crs)
     # Keep station point for plotting
-    smhi_stations_gdf["station_loc"] = smhi_stations_gdf["geometry"]
+    smhi_stations_gdf["station_location"] = smhi_stations_gdf["geometry"]
 
     # Perform Spatial join by nearest neighbour
-    jbv_gdf = jbv_gdf.sjoin_nearest(smhi_stations_gdf, how="left")
-    return jbv_gdf, pd.unique(jbv_gdf["key"])
-
-# @staticmethod
-# def fetch_station_data(station_key, parameter):
-#     """
-#     Fetch data from API
-
-#     Args:
-#         station_key (int): SMHI Station Key
-#         parameter (int): SMHI Parameter
-#     Returns:
-#     string: Response from SMHI if successful otherwise None
-#     """
-#     endpoint = f"https://opendata-download-metobs.smhi.se/api/version/1.0/parameter/{parameter}/station/{station_key}/period/corrected-archive/data.csv"
-#     response = requests.get(endpoint)
-#     return response if response.status_code == 200 else None
+    nearest_gdf = jbv_gdf.sjoin_nearest(smhi_stations_gdf, how="left")[["key", "station_location"]]
+    jbv_gdf["station_key"] = nearest_gdf["key"]
+    jbv_gdf["station_location"] = nearest_gdf["station_location"].to_crs("EPSG:4326")
     
-# @staticmethod
-# def save_csv_with_correct_encoding(response, file_path='station_data.csv'):
-#     """
-#     Detect encoding and save CSV file
-
-#     Args:
-#         response (string): Response from SMHI API Call
-#         file_path (string): location to store data at.
-    
-#     Returns:
-#         string: The encoding format of SMHI data
-#     """
-#     raw_data = response.content
-#     encoding_info = chardet.detect(raw_data)
-#     decoded_text = raw_data.decode(encoding_info['encoding'], errors='replace')
-#     data = pd.read_csv(StringIO(decoded_text), on_bad_lines='skip')
-#     data.to_csv(file_path, index=False)
-#     return encoding_info['encoding']
-
-# @staticmethod
-# def read_and_clean_station_data(file_path, encoding):
-#     """ 
-#     Read and clean station data from CSV
-    
-#     Args:
-#         file_path (string): File path to store data to.
-#         encoding (string): encoding information of data recieved from SMHI
-    
-#     Return:
-#         DataFrame: SMHI data without header
-#         List(string): List of strings representing our SMHI data
-#     """
-#     with open(file_path, 'r', encoding=encoding) as file:
-#         lines = file.readlines()
-    
-#     lines = [line.strip() for line in lines]
-
-#     header_index = next((i for i, line in enumerate(lines) if 'Från Datum Tid (UTC)' in line), -1)
-#     if header_index == -1:
-#         return None
-    
-#     head = lines[header_index].split(";")
-#     data = [line.split(';') for line in lines[header_index + 1:]]  # Remove header from data
-
-#     cleaned_data = []
-#     for d in data:
-#         idx = d[0].find(',')
-#         cleaned_line = d[0][idx+1:].split(';') 
-#         cleaned_data.append(cleaned_line + d[1:]) 
-    
-#     df = pd.DataFrame(cleaned_data, columns=head)
-#     return df, lines
+    return jbv_gdf.to_crs("EPSG:4326"), pd.unique(nearest_gdf["key"])
 
 #region Getting and reading SMHI DATA
 
-def get_station_data_on_key_param(station_key, parameter, from_date, to_date):
-    filename = f"./smhi_data/{parameter}-{station_key}.csv"
+def get_station_data_on_key_param(station_key, param_id, from_date, to_date):
+    """
+    Get SMHI data, If dowloaded get from local copy else Download new SMHI data to local and read.
+
+    Args:
+        station_key (String): Station key in SMHI API.
+        param_id (String): Parameter id in SMHI API.
+
+    Returns:
+        DataFrame: DataFrame with SMHI Data for parameter and station.
+    """
+    directory = "./smhi_data"
+    filename = f"{directory}/{param_id}-{station_key}.csv"
+
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
     if os.path.exists(filename):
         smhi_df = read_station_data_file_on_key_param(filename)
     else:
-        download_csv_station_data_on_key_param(station_key, parameter, filename)
+        download_csv_station_data_on_key_param(station_key, param_id, filename)
         smhi_df = read_station_data_file_on_key_param(filename)
 
-    # smhi_df = filter_on_date(smhi_df, from_date, to_date)
+    smhi_df = filter_smhi_data_on_date(smhi_df, from_date, to_date)
     return smhi_df
 
-def download_csv_station_data_on_key_param(station_key, parameter, filename):
-    endpoint = f"https://opendata-download-metobs.smhi.se/api/version/1.0/parameter/{parameter}/station/{station_key}/period/corrected-archive/data.csv"
+def download_csv_station_data_on_key_param(station_key, param_id, filename):
+    """
+    Download SMHI data to local data.csv.
+
+    Args:
+        station_key (String): Station key in SMHI API.
+        param_id (String): Parameter id in SMHI API.
+        filename (String): Relative path string to SMHI saved data, ex. ".\\smhi_data\\{param_id}-{station_key}.csv".
+    """
+    endpoint = f"https://opendata-download-metobs.smhi.se/api/version/1.0/parameter/{param_id}/station/{station_key}/period/corrected-archive/data.csv"
     with requests.get(endpoint, stream=True) as r:
         lines = (line.decode('utf-8') for line in r.iter_lines())
         with open(filename, mode='w', newline='', encoding='utf-8') as file:
@@ -195,10 +151,20 @@ def download_csv_station_data_on_key_param(station_key, parameter, filename):
                 writer.writerow(row)
 
 def read_station_data_file_on_key_param(filename):
+    """
+    Read SMHI data from local data.csv.
+
+    Args:
+        filename (String): Relative path string to SMHI saved data, ex. ".\\smhi_data\\{param_id}-{station_key}.csv".
+        
+    Returns:
+        DataFrame: DataFrame with SMHI Data for parameter and station.
+    """
     data_start = 0
     with open(filename, 'r', encoding='utf-8') as file:
         lines = file.readlines()
         for i, line in enumerate(lines):
+            #Break on "Kvalitet, Exists in all parameters"
             if 'Kvalitet' in line:
                 data_start = i
                 break
@@ -208,119 +174,107 @@ def read_station_data_file_on_key_param(filename):
 
     return smhi_df
 
-def clean_station_data(smhi_df):
+def clean_station_data(smhi_gdf):
+    """
+    Reformat SMHI Data in unified format and drop irrelevant rows.
+
+    Args:
+        smhi_gdf (GeoDataFrame): GeoDataFrame of SMHI data.
+
+    Returns:
+        DataFrame: SMHI Data in unified format without irrelevant rows.
+    """
     # Dates comes in either ["Tid (UTC)", "Datum"] or ["Från Datum Tid (UTC)", "Till Datum Tid (UTC)"] format based on parameter,
     # consolidate both in same format with "DateTime (UTC)"
-    if "Tid (UTC)" in smhi_df.columns:
-        smhi_df["DateTime (UTC)"] = pd.to_datetime(smhi_df["Datum"] + " " + smhi_df["Tid (UTC)"])
+    if "Tid (UTC)" in smhi_gdf.columns:
+        smhi_gdf["DateTime (UTC)"] = pd.to_datetime(smhi_gdf["Datum"] + " " + smhi_gdf["Tid (UTC)"])
     else:
-        smhi_df["DateTime (UTC)"] = pd.to_datetime(smhi_df["Från Datum Tid (UTC)"])
+        smhi_gdf["DateTime (UTC)"] = pd.to_datetime(smhi_gdf["Från Datum Tid (UTC)"])
 
     # Drop irrelevant columns if they exist
     drop_cols = ["Representativt dygn", "Tid (UTC)", "Datum", "Från Datum Tid (UTC)", "Till Datum Tid (UTC)", "Unnamed: 4", "Unnamed: 5", "Tidsutsnitt:"]
     for col in drop_cols:
-        if col in smhi_df.columns:
-            smhi_df = smhi_df.drop(col, axis=1)
+        if col in smhi_gdf.columns:
+            smhi_gdf = smhi_gdf.drop(col, axis=1)
     
+    return smhi_gdf
+
+def filter_smhi_data_on_date(smhi_df, from_date, to_date):
+    """
+    Filter on timeframe
+
+    Args:
+        smhi_df (GeoDataFrame): GeoDataFrame of SMHI data.
+        from_date (string): Date to filter from
+        to_date (string): Date to filter to
+
+    Returns:
+        DataFrame: SMHI Data within timeframe
+    """
+    if from_date and to_date:
+        from_mask = (smhi_df["DateTime (UTC)"] > pd.to_datetime(from_date)) & (smhi_df["DateTime (UTC)"] < pd.to_datetime(to_date))
+        smhi_df = smhi_df[from_mask]
     return smhi_df
+
 #endregion
 
-# def get_for_station_for_parameter(station_key, parameter):
-#     """
-#     Main function to get and process data
-
-#     Args:
-#         station_key (integer): SMHI station key
-#         parameter (int): parameter we want to query for.
-#         to_date (string): the upperbound date format: yyyy:mm:dd
-
-#     Returns:
-#         DataFrame: data of some station, specified by key. None if station doesn't have data within interval
-#     """
-#     response = fetch_station_data(station_key, parameter)
-#     if not response:
-#         print(f"Error fetching data")
-#         return None
-
-#     encoding = save_csv_with_correct_encoding(response)
-#     df, lines = read_and_clean_station_data('station_data.csv', encoding)
-
-#     df.to_csv('station_data.csv', sep=';', index=False)
-#     return df
-
-# def get_data_stations(unique_keys, param_id):
-#     """
-#     Gets DataFrame with data from the closest station that has data within our time interval.
-
-#     Args:
-#         cl (List(float, float)): Sorted list of tuples with regards to the meter distance, tuple:(distance, station_key)
-#         param (int): parameter we want to query for.
-#         to_date (string): the upperbound date format: yyyy:mm:dd
-
-#     Returns:
-#         DataFrame: data of the closest station that has data wihtin our time interval. None if none of the stations had data within interval
-#     """
-#     return {key: get_for_station_for_parameter(key, param_id) for key in unique_keys}
-
-# def get_date_interval_from_data(data, to_date, from_date):
-#     """
-#     Removes data points not contained within specified time interval
-
-#     Args:
-#         data (DataFrame): The data to filter
-#         to_date (string): the upperbound date format: yyyy:mm:dd
-#         from_date (string): the lowerbound date format: yyyy:mm:dd
-
-#     Returns:
-#         DataFrame: filtered data with regards to specified bounds
-#     """
-    
-#     data['Från Datum Tid (UTC)'] = pd.to_datetime(data['Från Datum Tid (UTC)'], errors='coerce')
-#     data['Till Datum Tid (UTC)'] = pd.to_datetime(data['Till Datum Tid (UTC)'], errors='coerce')
-
-#     start_range = pd.to_datetime(from_date)
-#     end_range = pd.to_datetime(to_date)
-
-#     filtered_data = data[(data['Från Datum Tid (UTC)'] >= start_range) & (data['Till Datum Tid (UTC)'] <= end_range)]
-#     return filtered_data
-
-# def get_parameter_data_on_JBV_gdf(jbv_gdf, param_id, from_date, to_date):
-#     jbv_gdf, unique_keys = find_closest_stations(jbv_gdf, param_id, from_date, to_date)
-#     station_data = get_data_stations(unique_keys, param_id)
-
-#     filtered_station_data = {key: get_date_interval_from_data(value, to_date, from_date) for key, value in station_data.items() if value is not None}
-#     return jbv_gdf, filtered_station_data
-
-
 if __name__ == "__main__":
+    from shapely.geometry import LineString
     # """
     # Example usage of module
     # """
     from_date = '2020-01-01'
     to_date = '2021-01-01'
+    param_id = "19"
 
-    smhi_df = get_station_data_on_key_param("188790", "21", from_date, to_date)
-    # smhi_df = get_station_data_on_key_param("154860", "19", from_date, to_date)
+    # smhi_gdf = get_station_data_on_key_param("188790", "21", from_date, to_date)
+    # # smhi_gdf = get_station_data_on_key_param("154860", "19", from_date, to_date)
 
-    print(smhi_df)
+    # print(smhi_gdf)
 
-    # gradings_df = api.get_gradings(from_date=str(from_date), to_date=str(to_date), crop="Höstvete", pest="svartpricksjuka")
+    gradings_df = api.get_gradings(from_date=str(from_date), to_date=str(to_date), crop="Höstvete", pest="svartpricksjuka")
     
-    # jbv_gdf = gpd.GeoDataFrame(gradings_df, geometry=gpd.points_from_xy(gradings_df.longitud, gradings_df.latitud), crs="EPSG:3006")
-    # jbv_gdf["geometry"] = jbv_gdf["geometry"].to_crs("EPSG:4326")
+    jbv_gdf = gpd.GeoDataFrame(gradings_df, geometry=gpd.points_from_xy(gradings_df.longitud, gradings_df.latitud), crs="EPSG:3006")
+    jbv_gdf["geometry"] = jbv_gdf["geometry"].to_crs("EPSG:4326")
 
-    # # REMOVE ENTRIES NOT IN SWEDEN!
-    # countries = ".\\geodata\\ne_110m_admin_0_countries\\ne_110m_admin_0_countries.shp"
-    # world = gpd.read_file(countries)
-    # sweden_boundary = world[world['NAME'] == 'Sweden']
-    # sweden_boundary.to_crs("EPSG:4326")
-    # jbv_gdf = jbv_gdf[jbv_gdf.geometry.within(sweden_boundary.geometry.union_all())]
-    # jbv_gdf = jbv_gdf[jbv_gdf["delomrade"] == "Västmanland"]
-    # print(jbv_gdf)
-    # jbv_gdf, filtered_station_data = get_parameter_data_on_JBV_gdf(jbv_gdf, "19", from_date, to_date)
+    # REMOVE ENTRIES NOT IN SWEDEN! Should probably be implemented somewhere :)
+    countries = ".\\geodata\\ne_110m_admin_0_countries\\ne_110m_admin_0_countries.shp"
+    world = gpd.read_file(countries)
+    sweden_boundary = world[world['NAME'] == 'Sweden']
+    sweden_boundary.to_crs("EPSG:4326")
+    jbv_gdf = jbv_gdf[jbv_gdf.geometry.within(sweden_boundary.geometry.union_all())]
 
-    # jbv_gdf, unique_keys = find_closest_station(jbv_gdf, "19", from_date, to_date)
-    # print(unique_keys)
+    jbv_gdf, unique_keys = find_closest_stations(jbv_gdf, param_id, from_date, to_date)
+    print("JBV GDF with station key and location: \n", jbv_gdf)
+    print("\nUnique station Keys Near Fields: \n", unique_keys)
+
+    station_data = get_station_data_on_key_param(unique_keys[0],param_id, from_date, to_date)
+    print("\nStation data for first station in Unique list: \n", station_data)
+
+    def create_connection(row, l_key, r_key):
+        if row[l_key].is_empty or row[r_key].is_empty:
+            return None  # or return LineString() to create an empty LineString
+        else:
+            return LineString([row[l_key], row[r_key]])
+    
+    jbv_gdf['connection'] = jbv_gdf.apply(lambda row: create_connection(row, l_key='geometry', r_key='station_location'), axis=1)
+
+    connections = gpd.GeoDataFrame(jbv_gdf['connection'], geometry='connection', crs="EPSG:4326")
+
+    # Plot the results
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    # Plot the original points
+    jbv_gdf["geometry"].plot(ax=ax, color='green', label='Field', markersize=20)
+    # smhi_stations_gdf["station_loc"].plot(ax=ax, color='gray', label='Unused Station', markersize=10)
+    jbv_gdf["station_location"].plot(ax=ax, color='blue', label='Used Station', markersize=20)
+
+    # Plot the connection lines
+    connections.plot(ax=ax, color='gray', linewidth=0.8, linestyle='--')
+
+    plt.legend()
+    plt.title('Station selection')
+    plt.show()
 
     # station_data = get_data_from_closest_station(unique_keys, "19", to_date)
 
