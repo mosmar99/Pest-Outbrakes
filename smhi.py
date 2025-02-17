@@ -13,13 +13,11 @@ sys.path.append(parent_dir)
 
 import api
 
-from geopy.distance import geodesic
-
 import datetime
 
 import numpy as np
-
-import chardet
+import csv
+# import chardet
 
 import geopandas as gpd
 
@@ -66,23 +64,11 @@ def fetch_data_on_key(endpoint, json_key):
         print(f"Error: {response.status_code} - {response.text}")
         return None
 
-@staticmethod
-def get_meter_distance(point1, point2):
-    """
-    Takes two points as paramters and counts meter distance between the two.
-    
-    Args:
-        point1 (float, float): 
-        point2 (float, float):
+def find_closest_stations(jbv_gdf, param_id, from_date, to_date):
+    smhi_stations_gdf = get_stations_on_parameter_id(param_id=param_id, measuringStations="CORE", from_date=from_date, to_date=to_date)
 
-    Returns:
-        float: distance in meters.
-    """
-    return geodesic(point1[::-1], point2[::-1]).meters
-
-def find_closest_station(jbv_gdf, param_id, from_date, to_date):
-    smhi_stations_gdf = get_all_stations_on_parameter_id(param_id=param_id, measuringStations="CORE", from_date=from_date, to_date=to_date)
-
+    print(smhi_stations_gdf.crs)
+    print(jbv_gdf.crs)
     # Convert to estimated UTM CRS to achieve accuracy in distances
     utm_crs = jbv_gdf.estimate_utm_crs()
     jbv_gdf = jbv_gdf.to_crs(utm_crs)
@@ -95,7 +81,7 @@ def find_closest_station(jbv_gdf, param_id, from_date, to_date):
     return jbv_gdf, pd.unique(jbv_gdf["key"])
 
 
-def get_all_stations_on_parameter_id(param_id="19", measuringStations=None, from_date=None, to_date=None):
+def get_stations_on_parameter_id(param_id="19", measuringStations=None, from_date=None, to_date=None):
     df = fetch_data_on_key(f'{SMHI_URI["all_stations"]}/{param_id}.json', "station")
 
     gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326")
@@ -187,27 +173,33 @@ def read_and_clean_station_data(file_path, encoding):
     df = pd.DataFrame(cleaned_data, columns=head)
     return df, lines
 
-@staticmethod
-def is_data_up_to_date(lines, to_date):
-    """
-    Check if the last available data is up-to-date
+def get_station_data_on_key_param(station_key, parameter):
+    download_csv_station_data_on_key_param(station_key, parameter)
+
+def download_csv_station_data_on_key_param(station_key, parameter):
+    endpoint = f"https://opendata-download-metobs.smhi.se/api/version/1.0/parameter/{parameter}/station/{station_key}/period/corrected-archive/data.csv"
+    filename = f"./smhi_data/{parameter}-{station_key}.csv"
+    with requests.get(endpoint, stream=True) as r:
+        lines = (line.decode('utf-8') for line in r.iter_lines())
+        with open(filename, mode='w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            for row in csv.reader(lines):
+                writer.writerow(row)
+
+def read_station_data_file_on_key_param(station_key, parameter):
+    file_path = ".\\smhi_data\\{19}-{154860}.csv"
+    data_start = 0
+    with open(file_path, 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+        for i, line in enumerate(lines):
+            if 'Kvalitet' in line:
+                data_start = i
+                break
     
-    Args:
-        lines (List(string)): The lines of our df object
-        to_date (string): the upperbound date format: yyyy:mm:dd
+    smhi_df = pd.read_csv(file_path, skiprows=data_start, delimiter=';')
+    return smhi_df
 
-    Returns:
-        Bool: True if the ending_date is post our to_date, false if not.
-    """
-    try:
-        ending_date = lines[-1].split(';')[1].split(" ")[0].split('-')
-        ending_date = list(map(int, ending_date))
-        td = list(map(int, to_date.split('-')))
-        return datetime.date(ending_date[0], ending_date[1], ending_date[2]) >= datetime.date(td[0], td[1], td[2])
-    except:
-        return False
-
-def get_for_station_for_parameter(station_key, parameter, to_date):
+def get_for_station_for_parameter(station_key, parameter):
     """
     Main function to get and process data
 
@@ -227,15 +219,10 @@ def get_for_station_for_parameter(station_key, parameter, to_date):
     encoding = save_csv_with_correct_encoding(response)
     df, lines = read_and_clean_station_data('station_data.csv', encoding)
 
-    if not is_data_up_to_date(lines, to_date):
-        return None
-
     df.to_csv('station_data.csv', sep=';', index=False)
     return df
 
-
-
-def get_data_from_closest_station(unique_keys, param_id, to_date):
+def get_data_stations(unique_keys, param_id):
     """
     Gets DataFrame with data from the closest station that has data within our time interval.
 
@@ -247,7 +234,7 @@ def get_data_from_closest_station(unique_keys, param_id, to_date):
     Returns:
         DataFrame: data of the closest station that has data wihtin our time interval. None if none of the stations had data within interval
     """
-    return {key: get_for_station_for_parameter(key, param_id, to_date) for key in unique_keys}
+    return {key: get_for_station_for_parameter(key, param_id) for key in unique_keys}
 
 def get_date_interval_from_data(data, to_date, from_date):
     """
@@ -271,112 +258,59 @@ def get_date_interval_from_data(data, to_date, from_date):
     filtered_data = data[(data['Från Datum Tid (UTC)'] >= start_range) & (data['Till Datum Tid (UTC)'] <= end_range)]
     return filtered_data
 
+def get_parameter_data_on_JBV_gdf(jbv_gdf, param_id, from_date, to_date):
+    jbv_gdf, unique_keys = find_closest_stations(jbv_gdf, param_id, from_date, to_date)
+    station_data = get_data_stations(unique_keys, param_id)
+
+    filtered_station_data = {key: get_date_interval_from_data(value, to_date, from_date) for key, value in station_data.items() if value is not None}
+    return jbv_gdf, filtered_station_data
+
 
 if __name__ == "__main__":
-    """
-    Example usage of module
-    """
-    from_date = '2020-01-01'
-    to_date = '2021-01-01'
+    # """
+    # Example usage of module
+    # """
+    # from_date = '2020-01-01'
+    # to_date = '2021-01-01'
 
-    gradings_df = api.get_gradings(from_date=from_date, to_date=to_date)
+    def get_station_data()
+    get_csv_station_data_on_key_param("154860", "19")
 
-    jbv_gdf = gpd.GeoDataFrame(gradings_df, geometry=gpd.points_from_xy(gradings_df.longitud, gradings_df.latitud), crs="EPSG:3006")
-    jbv_gdf["geometry"] = jbv_gdf["geometry"].to_crs("EPSG:4326")
+    file_path = ".\\smhi_data\\19-154860.csv"
+    data_start = 0
+    with open(file_path, 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+        for i, line in enumerate(lines):
+            if 'Kvalitet' in line:
+                data_start = i
+                break
 
-    jbv_gdf, unique_keys = find_closest_station(jbv_gdf, "19", from_date, to_date)
-    print(unique_keys)
+    smhi_df = pd.read_csv(file_path, skiprows=data_start, delimiter=';')
 
-    station_data = get_data_from_closest_station(unique_keys, "19", to_date)
+    print(smhi_df)
 
-    fd = {key: get_date_interval_from_data(value, to_date, from_date) for key, value in station_data.items() if value is not None}
-    print(fd)
-
-    first_key = next(iter(fd))
-    head = fd[first_key]
-    print(head['Lufttemperatur'])
-
-    def extract_pest(df: pd.DataFrame, pest: str) -> pd.DataFrame:
-        """
-        Look through df and extract data from 'graderingstillfalleList'.
-        Extract records where 'skadegorare' == pest,
-        Also adding other relevant information such as delomrade, lat-lon coordinates
-        Needed since graderingslist is a list containing all measure instances for a given time period (year)
-        """
-
-        records = []
-
-        for idx, row in df.iterrows():
-            graderings_tillfallen = row.get('graderingstillfalleList', [])
-            if not isinstance(graderings_tillfallen, list):
-                continue
-
-            #get area name, lat/long, etc
-            delomrade_val = row.get('delomrade')
-            lat_val = row.get('latitud')
-            lon_val = row.get('longitud')
-            crop = row.get('groda')
-            sort = row.get('sort')
-
-            for tillfalle in graderings_tillfallen:
-                datum_str = tillfalle.get('graderingsdatum')
-                datum_parsed = pd.to_datetime(datum_str, errors='coerce') if datum_str else None
-                year = datum_parsed.year if pd.notnull(datum_parsed) else None
-
-                graderingar = tillfalle.get('graderingList', [])
-                for g in graderingar:
-                    if g.get('skadegorare') == pest:
-                        varde_str = g.get('varde')
-                        value = pd.to_numeric(varde_str, errors='coerce') if varde_str is not None else None
-                        measuring_method = g.get('matmetod')
-
-                        records.append({
-                            "index_in_main_df": idx,
-                            "delomrade": delomrade_val,
-                            "latitud": lat_val,
-                            "longitud": lon_val,
-                            "date": datum_parsed,
-                            "year": year,
-                            "crop": crop,
-                            "type": sort,
-                            "pest": pest,
-                            "measuring_method": measuring_method,
-                            "value": value
-                        })
-
-        return pd.DataFrame(records)
+    # gradings_df = api.get_gradings(from_date=str(from_date), to_date=str(to_date), crop="Höstvete", pest="svartpricksjuka")
     
+    # jbv_gdf = gpd.GeoDataFrame(gradings_df, geometry=gpd.points_from_xy(gradings_df.longitud, gradings_df.latitud), crs="EPSG:3006")
+    # jbv_gdf["geometry"] = jbv_gdf["geometry"].to_crs("EPSG:4326")
 
-    df_bf = extract_pest(jbv_gdf.head(), 'Bladlus')
-    df_bf = df_bf.sort_values(by='date')
+    # # REMOVE ENTRIES NOT IN SWEDEN!
+    # countries = ".\\geodata\\ne_110m_admin_0_countries\\ne_110m_admin_0_countries.shp"
+    # world = gpd.read_file(countries)
+    # sweden_boundary = world[world['NAME'] == 'Sweden']
+    # sweden_boundary.to_crs("EPSG:4326")
+    # jbv_gdf = jbv_gdf[jbv_gdf.geometry.within(sweden_boundary.geometry.union_all())]
+    # jbv_gdf = jbv_gdf[jbv_gdf["delomrade"] == "Västmanland"]
+    # print(jbv_gdf)
+    # jbv_gdf, filtered_station_data = get_parameter_data_on_JBV_gdf(jbv_gdf, "19", from_date, to_date)
 
-    head['Lufttemperatur'] = pd.to_numeric(head['Lufttemperatur'], errors='coerce')
+    # jbv_gdf, unique_keys = find_closest_station(jbv_gdf, "19", from_date, to_date)
+    # print(unique_keys)
 
-    vector_size = 11
-    stddev = 2
+    # station_data = get_data_from_closest_station(unique_keys, "19", to_date)
 
-    weights = np.exp(-0.5 * (np.linspace(-stddev, stddev, vector_size) ** 2))
-    weights = weights / np.sum(weights)
+    # fd = {key: get_date_interval_from_data(value, to_date, from_date) for key, value in station_data.items() if value is not None}
+    # print(fd)
 
-    smoothed_temperature = np.convolve(head['Lufttemperatur'], weights, mode='same')
-    head['Lufttemperatur'] = smoothed_temperature
-
-    start_range = pd.to_datetime(from_date)
-    end_range = pd.to_datetime(to_date)
-
-    smoothed_temperature = np.convolve(df_bf['value'], weights, mode='same')
-    df_bf['value'] = smoothed_temperature
-    filtered_data = head[(head['Från Datum Tid (UTC)'] >= start_range) & (head['Till Datum Tid (UTC)'] <= end_range)]
-
-    plt.figure(figsize=(12, 6))
-    plt.plot(filtered_data['Från Datum Tid (UTC)'], filtered_data['Lufttemperatur'], linestyle='-', color='b', label='Temperature (°C)')
-    plt.plot(df_bf['date'], df_bf['value'], color='g', label='Bladlus (antal)')
-
-    plt.xlabel('Date')
-    plt.ylabel('Temperature (°C)')
-    plt.title('Temperature Over Time (Filtered)')
-    plt.legend()
-    plt.grid(True)
-    plt.xticks(rotation=45)
-
-    plt.show()
+    # first_key = next(iter(fd))
+    # head = fd[first_key]

@@ -51,5 +51,5 @@ def get_all_stations_on_parameter_id(param_id="19", measuringStations=None, from
 if __name__ == "__main__":
     df = get_all_parameters()
     print(df)
-    gdf = get_all_stations_on_parameter_id()
-    print(gdf)
+    # gdf = get_all_stations_on_parameter_id()
+    # print(gdf)

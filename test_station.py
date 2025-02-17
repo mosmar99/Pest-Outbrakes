@@ -15,6 +15,10 @@ if __name__ == "__main__":
     jbv_gdf = gpd.GeoDataFrame(gradings_df, geometry=gpd.points_from_xy(gradings_df.longitud, gradings_df.latitud), crs="EPSG:3006")
     jbv_gdf["geometry"] = jbv_gdf["geometry"].to_crs("EPSG:4326")
 
+
+
+
+
     smhi_stations_gdf = smhi_api.get_all_stations_on_parameter_id(measuringStations="CORE", from_date=from_date, to_date=to_date)
 
     # Convert to estimated UTM CRS to achieve accuracy in distances
