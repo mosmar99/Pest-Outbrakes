@@ -2,23 +2,46 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 def lineplot(data_df, crop, pest, latitud, longitud, moving_avg=None):
+    """
+    Generates a line plot of pest and crop values over time, with an optional moving average filter.
+    Args:
+        data_df (pd.DataFrame): The input dataframe containing crop and pest data.
+        crop (str): The name of the crop being analyzed.
+        pest (str): The name of the pest affecting the crop.
+        latitud (float): Latitude coordinate of the data location.
+        longitud (float): Longitude coordinate of the data location.
+        moving_avg (Optional[str]): Specifies the level of moving average ("low", "mid", "high"), or None.
+    Returns:
+        None
+    """
+
+    window_sizes = {
+        "low" : max(3,  len(data_df) // 50),   
+        "mid" : max(5,  len(data_df) // 45),   
+        "high": max(7, len(data_df) // 40)  
+    }
+
+    plt.figure(figsize=(12, 6))
     if moving_avg == None:        
-        plt.figure(figsize=(12, 6))
-        plt.plot(data_df['graderingsdatum'], data_df['varde'], color='tab:blue', label=str(pest).capitalize(), lw=1.5)
-        plt.plot(data_df['graderingsdatum'], data_df['utvecklingsstadium'], color='tab:orange', label=str(crop).capitalize(), lw=1.5)
+        plt.plot(data_df['graderingsdatum'], data_df['varde'], color='#d62728', label=str(pest).capitalize(), lw=1.5, zorder=1)
+        plt.plot(data_df['graderingsdatum'], data_df['utvecklingsstadium'], color='#2ca02c', label=str(crop).capitalize(), lw=2, zorder=2)
+    elif moving_avg in window_sizes:
+        window = window_sizes[moving_avg]
+        data_df['varde_smooth'] = data_df['varde'].rolling(window=window, min_periods=1).mean()
+        data_df['utvecklingsstadium_smooth'] = data_df['utvecklingsstadium'].rolling(window=window, min_periods=1).mean()
 
-        plt.xlabel('DATUM')
-        plt.ylabel('VÄRDEN')
-        plt.title(f'{str(crop).capitalize()} & {str(pest).capitalize()} | Location. Lat={round(latitud, 5)}, Long: {round(longitud, 5)}')
+        data_df.loc[data_df['varde'].isna(), 'varde_smooth'] = None
+        data_df.loc[data_df['utvecklingsstadium'].isna(), 'utvecklingsstadium_smooth'] = None        
 
-        plt.legend()
-        plt.grid()
-        plt.show()
-    elif moving_avg == "low":
-        pass
-    elif moving_avg == "mid":
-        pass
-    elif moving_avg == "high":
-        pass
+        plt.plot(data_df['graderingsdatum'], data_df['varde_smooth'], color='#d62728', label=f"{str(pest).capitalize()} (Smoothed)", lw=1.5)
+        plt.plot(data_df['graderingsdatum'], data_df['utvecklingsstadium_smooth'], color='#2ca02c', label=f"{str(crop).capitalize()} (Smoothed)", lw=1.5)
     else:
-        raise ValueError("Wrong parameter values.")
+        raise ValueError("Invalid moving_avg parameter. Choose from: None, 'low', 'mid', or 'high'.")
+    
+    plt.xlabel('DATUM')
+    plt.ylabel('VÄRDEN')
+    plt.title(f'{str(crop).capitalize()} & {str(pest).capitalize()} | Location. Lat={round(latitud, 5)}, Long: {round(longitud, 5)}')
+    
+    plt.grid(linestyle='--', linewidth=0.5)
+    plt.legend()
+    plt.show()
