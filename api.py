@@ -11,7 +11,8 @@ URI = {
     "pests_linked_to_gradings": "https://api.jordbruksverket.se/rest/povapi/skadegorare/alla",
     "crops_linked_to_gradings": "https://api.jordbruksverket.se/rest/povapi/groda/alla",
     "gradings": "https://api.jordbruksverket.se/rest/povapi/graderingar",
-    "update_information": "https://api.jordbruksverket.se/rest/povapi/uppdateringsinformation"
+    "update_information": "https://api.jordbruksverket.se/rest/povapi/uppdateringsinformation",
+    "smhi": "https://opendata-download-metobs.smhi.se/api/"
 }
 
 load_dotenv()
@@ -53,5 +54,4 @@ def sweref99tm_to_wgs84(df):
     wgs84 = 'EPSG:4326'
     transformer = Transformer.from_crs(sweref99tm, wgs84, always_xy=False)
     df['latitud'], df['longitud'] = transformer.transform(df['latitud'].values, df['longitud'].values)
-
     return df
