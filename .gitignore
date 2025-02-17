@@ -5,3 +5,6 @@
 /presentation.org
 /work
 /*.csv
+/venv
+/output.csv
+/KNIME
