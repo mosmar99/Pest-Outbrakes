@@ -1,17 +1,21 @@
 import pandas as pd
 
-def flatten_data(df: pd.DataFrame) -> pd.DataFrame:
+def flatten_data(df):
     """
-    Flattens the 'graderingstillfalleList' structure into a flat DataFrame.
+    Flattens the inital dataframe from a api call by extracting the items in 'graderingstillfalleList' structure into a flat DataFrame.
     
-    New features of the datasets added:
-      - pest: the pest name.
-      - measuring_methods: a list of the measuring methods.
-      - timestamps: a list of datetime objects for the grading event dates for the pest.
-      - measurement_values: a list of numeric measurement values for that pest.
+    Args:
+        df (pd.Dataframe): For now only tested with to work with a similar API call as this:
+        http://api.jordbruksverket.se/rest/povapi/graderingar?fran=2010-06-04&till=2019-11-22&groda=Höstvete&skadegorare=alla
     
-    All features are translated to english.
-    This produces one output row per pest (per original row).
+    Returns:
+        pd.Dataframe: This produces a new dataframe with one output row per pest (per original row) from graderingstillfalleList. 
+        New features of the datasets added per row:
+        - pest: the pest name.
+        - measuring_methods: a list of the measuring methods.
+        - timestamps: a list of datetime objects for the grading event dates for the pest.
+        - measurement_values: a list of numeric measurement values for that pest.
+        - All features are translated to english.
     """
     records = []
 
@@ -87,22 +91,41 @@ def flatten_data(df: pd.DataFrame) -> pd.DataFrame:
 
 #The rest of the filtering methods are dependent on flattening the data recieved from the API
 
-def filter_crop(df: pd.DataFrame, crop_name: str) -> pd.DataFrame:
+def filter_crop(df, crop_name):
     """
     Returns rows from df where the 'crop' column matches the given crop name.
+
+    Args:
+        df (pd.DataFrame): A flattened dataframe (from flatten_data).
+        crop_name(str): The name of the crop.
+    
+    Returns:
+        pd.Dataframe: Rows where crop_name matches df['crop'].
     """
     return df[df['crop'] == crop_name]
 
-def filter_area(df: pd.DataFrame, area_name: str) -> pd.DataFrame:
+def filter_area(df, area_name):
     """
     Returns rows from df where the 'area' column matches the given area name.
+    Args:
+        df (pd.DataFrame): A flattened dataframe (from flatten_data).
+        area_name(str): The name of the area.
+    
+    Returns:
+        pd.Dataframe: Rows where area_name matches df['area'].
     """
     return df[df['area'] == area_name]
 
-def filter_by_pest(df: pd.DataFrame, pest: str) -> pd.DataFrame:
+def filter_by_pest(df, pest_name):
     """
-    Returns rows from df for a given pest.
+    Returns rows from df where the 'pest column matches the given pest name.
+    Args:
+        df (pd.DataFrame): A flattened dataframe (from flatten_data).
+        pest_name(str): The name of the pest.
+    
+    Returns:
+        pd.Dataframe: Rows where pest_name matches df['pest'].
     """
-    return df[df['pest'] == pest]
+    return df[df['pest'] == pest_name]
 
 # TODO: Add more filtering methods depending on needs.
