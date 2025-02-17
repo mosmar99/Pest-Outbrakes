@@ -174,11 +174,17 @@ def read_and_clean_station_data(file_path, encoding):
     return df, lines
 
 def get_station_data_on_key_param(station_key, parameter):
-    download_csv_station_data_on_key_param(station_key, parameter)
-
-def download_csv_station_data_on_key_param(station_key, parameter):
-    endpoint = f"https://opendata-download-metobs.smhi.se/api/version/1.0/parameter/{parameter}/station/{station_key}/period/corrected-archive/data.csv"
     filename = f"./smhi_data/{parameter}-{station_key}.csv"
+    if os.path.exists(filename):
+        smhi_df = read_station_data_file_on_key_param(filename)
+    else:
+        download_csv_station_data_on_key_param(station_key, parameter, filename)
+        smhi_df = read_station_data_file_on_key_param(filename)
+
+    return smhi_df
+
+def download_csv_station_data_on_key_param(station_key, parameter, filename):
+    endpoint = f"https://opendata-download-metobs.smhi.se/api/version/1.0/parameter/{parameter}/station/{station_key}/period/corrected-archive/data.csv"
     with requests.get(endpoint, stream=True) as r:
         lines = (line.decode('utf-8') for line in r.iter_lines())
         with open(filename, mode='w', newline='', encoding='utf-8') as file:
@@ -186,17 +192,16 @@ def download_csv_station_data_on_key_param(station_key, parameter):
             for row in csv.reader(lines):
                 writer.writerow(row)
 
-def read_station_data_file_on_key_param(station_key, parameter):
-    file_path = ".\\smhi_data\\{19}-{154860}.csv"
+def read_station_data_file_on_key_param(filename):
     data_start = 0
-    with open(file_path, 'r', encoding='utf-8') as file:
+    with open(filename, 'r', encoding='utf-8') as file:
         lines = file.readlines()
         for i, line in enumerate(lines):
             if 'Kvalitet' in line:
                 data_start = i
                 break
     
-    smhi_df = pd.read_csv(file_path, skiprows=data_start, delimiter=';')
+    smhi_df = pd.read_csv(filename, skiprows=data_start, delimiter=';')
     return smhi_df
 
 def get_for_station_for_parameter(station_key, parameter):
@@ -273,19 +278,8 @@ if __name__ == "__main__":
     # from_date = '2020-01-01'
     # to_date = '2021-01-01'
 
-    def get_station_data()
-    get_csv_station_data_on_key_param("154860", "19")
+    smhi_df = get_station_data_on_key_param("154860", "19")
 
-    file_path = ".\\smhi_data\\19-154860.csv"
-    data_start = 0
-    with open(file_path, 'r', encoding='utf-8') as file:
-        lines = file.readlines()
-        for i, line in enumerate(lines):
-            if 'Kvalitet' in line:
-                data_start = i
-                break
-
-    smhi_df = pd.read_csv(file_path, skiprows=data_start, delimiter=';')
 
     print(smhi_df)
 
