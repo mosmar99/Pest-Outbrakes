@@ -3,32 +3,32 @@ import requests
 
 import pandas as pd
 import geopandas as gpd
+from requests.auth import HTTPBasicAuth
+from dotenv import load_dotenv
 
 import os
 
 import csv
 
-def fetch_data(endpoint, as_df=False):
+def fetch_data(endpoint, auth=None, return_format='json'):
     """
-    Get Dataframe for stations that have parameter id within timeframe.
+    Retrieves data from an API endpoint using HTTP Basic Authentication.
 
     Args:
-        endpoint (String): Api endpoint string.
-        as_df (Bool): enable autoconversion to df
-        
+        endpoint (str): The API endpoint URL to fetch data from.
+
     Returns:
-        Json/DataFrame: Fetched data as Json dictionary or DataFrame.
+        Optional[pd.DataFrame]: A dataframe containing the fetched data if successful, otherwise None.
     """
-    response = requests.get(endpoint)
+
+    response = requests.get(endpoint, auth=auth)
 
     if response.status_code == 200:
         data = response.json()
-        # Might be better to handle in downstream API modules
-        # actual SMHI data when getting stations is in a nested json
-        # Added support for both initially
-        if not as_df:
+        if return_format == 'json':
             return data
-        return pd.DataFrame(data)
+        elif return_format == 'pandas':
+            return pd.DataFrame(data)
     else:
         print(f"Error: {response.status_code} - {response.text}")
         return None

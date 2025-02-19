@@ -1,7 +1,7 @@
 /play.ipynb
 /smhi_data
 /.env
-/__pycache__
+__pycache__/
 /presentation.org
 /work
 /*.csv
