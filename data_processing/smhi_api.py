@@ -31,7 +31,7 @@ def get_stations_on_parameter_id(param_id="19"):
 
 def get_station_data_on_key_param(station_key, param_id):
     """
-    Get SMHI data, If dowloaded get from local copy else Download new SMHI data to local and read.
+    Get SMHI data, If dowloaded get from local copy else Download new SMHI data to local and read. Add station key col
 
     Args:
         station_key (String): Station key in SMHI API.
@@ -50,7 +50,7 @@ def get_station_data_on_key_param(station_key, param_id):
         endpoint = f"{SMHI_URI['base_uri']}/parameter/{param_id}/station/{station_key}/period/corrected-archive/data.csv"
         api.download_csv(endpoint, directory, filename)
         smhi_df = read_station_data_csv(filepath)
-
+    smhi_df["station_key"] = station_key
     return smhi_df
 
 def read_station_data_csv(filename):
