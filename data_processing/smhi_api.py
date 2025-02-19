@@ -11,6 +11,17 @@ SMHI_URI = {
     "all_stations": "https://opendata-download-metobs.smhi.se/api/version/latest/parameter",
 }
 
+def get_all_parameters():
+    """
+    Get Dataframe for all parameters.
+        
+    Returns:
+        DataFrame: DataFrame with all SMHI api weather station parameters
+    """
+    parameter_json = api.fetch_data(SMHI_URI["all_parameters"])["resource"]
+    return pd.DataFrame(parameter_json)
+
+
 def get_stations_on_parameter_id(param_id="19"):
     """
     Get Dataframe for stations that have parameter id within timeframe.
@@ -72,11 +83,16 @@ def read_station_data_csv(filename):
                 data_start = i
                 break
     
-    smhi_df = pd.read_csv(filename, skiprows=data_start, delimiter=';')
+    smhi_df = pd.read_csv(filename, skiprows=data_start, delimiter=';', low_memory=False)
 
     return smhi_df
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     # testing
+    params = get_all_parameters()
+    stations = get_stations_on_parameter_id()
+    params = params.drop(["geoBox", "link"],axis=1)
+    print(params)
+    print(stations)
     pass
