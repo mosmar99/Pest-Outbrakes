@@ -37,7 +37,7 @@ def remove_outside_sweden_coords(data_df):
         data_df (pd.DataFrame): The input dataframe containing location data.
 
     Returns:
-        data_df (pd.DataFrame): The ouput dataframe without containing missing location data.
+        data_df (pd.DataFrame): The ouput dataframe exclusivly containing Swedish location data.
     """
     # Assumes WGS84 Coordinate System
     min_lat, max_lat = 55, 70
