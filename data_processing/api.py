@@ -8,15 +8,16 @@ import os
 
 import csv
 
-def fetch_data(endpoint):
+def fetch_data(endpoint, as_df=False):
     """
     Get Dataframe for stations that have parameter id within timeframe.
 
     Args:
         endpoint (String): Api endpoint string.
+        as_df (Bool): enable autoconversion to df
         
     Returns:
-        Json: Fetched data as Json dictionary.
+        Json/DataFrame: Fetched data as Json dictionary or DataFrame.
     """
     response = requests.get(endpoint)
 
@@ -24,8 +25,10 @@ def fetch_data(endpoint):
         data = response.json()
         # Might be better to handle in downstream API modules
         # actual SMHI data when getting stations is in a nested json
-        # df = pd.DataFrame(data[json_key]) 
-        return data
+        # Added support for both initially
+        if not as_df:
+            return data
+        return pd.DataFrame(data)
     else:
         print(f"Error: {response.status_code} - {response.text}")
         return None

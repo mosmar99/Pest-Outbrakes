@@ -1,9 +1,9 @@
 import pandas as pd
 import geopandas as gpd
 
-def clean_stations(gdf, dropcols=['latitude','longitude', 'summary', 'link', 'id']):
+def clean_stations(smhi_stations_gdf, dropcols=['latitude','longitude', 'summary', 'link', 'id']):
     """
-    Get Dataframe for stations that have parameter id within timeframe.
+    Clean list of stations, drop irrelevant columns and convert dtypes.
 
     Args:
         smhi_gdf (GeoDataFrame): Smhi stations gdf.
@@ -12,69 +12,62 @@ def clean_stations(gdf, dropcols=['latitude','longitude', 'summary', 'link', 'id
     Returns:
         GeoDataFrame: GeoDataFrame with columns dropped and dtypes set.
     """
-    gdf = gdf.drop(dropcols, axis=1)
+    smhi_stations_gdf = smhi_stations_gdf.drop(dropcols, axis=1)
 
-    gdf['updated'] = pd.to_datetime(gdf['updated'], unit="ms")
-    gdf['from'] = pd.to_datetime(gdf['from'], unit="ms")
-    gdf['to'] = pd.to_datetime(gdf['to'], unit="ms")
+    smhi_stations_gdf['updated'] = pd.to_datetime(smhi_stations_gdf['updated'], unit="ms")
+    smhi_stations_gdf['from'] = pd.to_datetime(smhi_stations_gdf['from'], unit="ms")
+    smhi_stations_gdf['to'] = pd.to_datetime(smhi_stations_gdf['to'], unit="ms")
 
-    return gdf
+    return smhi_stations_gdf
 
-
-def filter_stations_on_date(gdf, from_date, to_date):
+def filter_stations_on_date(smhi_stations_gdf, from_date, to_date):
     """
-    Get Dataframe for stations that have parameter id within timeframe.
+    Get filter on stations that have data within timeframe.
 
     Args:
+        gdf (GeoDataFrame): Smhi Stations gdf.
+        from_date (String): Fromdate, for checking avalibility in station.
+        to_date (String): Fromdate, for checking avalibility in station.
+        
+    Returns:
+        GeoDataFrame: GeoDataFrame with SMHI Stations for timeframe.
+    """
+    from_mask = smhi_stations_gdf['from'] < pd.to_datetime(from_date) & smhi_stations_gdf['to'] > pd.to_datetime(to_date)
+    smhi_stations_gdf = smhi_stations_gdf[from_mask]
+    
+    return smhi_stations_gdf
+
+def filter_stations_type(smhi_stations_gdf, measuringStations):
+    """
+    Filter stations on type ['CORE', 'ADDITIONAL']
+
+    Args:
+        gdf (GeoDataFrame): Smhi Stations gdf.
         from_date (String): Fromdate, for checking avalibility in station.
         to_date (String): Fromdate, for checking avalibility in station.
         
     Returns:
         GeoDataFrame: GeoDataFrame with SMHI Stations for timeframe and parameter id.
     """
+    measuringStations_mask = smhi_stations_gdf["measuringStations"] == measuringStations
+    smhi_stations_gdf = smhi_stations_gdf[measuringStations_mask]
 
-    from_mask = gdf['from'] < pd.to_datetime(from_date) & gdf['to'] > pd.to_datetime(to_date)
-    gdf = gdf[from_mask]
-    
-    if to_date:
-        to_mask = gdf['to'] > pd.to_datetime(to_date)
-        gdf = gdf[to_mask]
-    
-    return gdf
-
-def filter_stations_type(measuringStations):
-    if measuringStations:
-        measuringStations_mask = gdf["measuringStations"] == measuringStations
-        gdf = gdf[measuringStations_mask]
-
-def find_closest_stations(jbv_gdf, param_id, from_date, to_date):
+def process_stations(smhi_stations_gdf, from_date, to_date):
     """
-    Get SMHI data, If dowloaded get from local copy else Download new SMHI data to local and read.
+    All in one Stations processing, 
 
     Args:
-        jbv_gdf (GeoDataFrame): JBV reference data
-        param_id (String): Parameter id in SMHI API.
-        from_date (String): Fromdate, for checking avalibility in station
-        to_date (String): Fromdate, for checking avalibility in station
+        smhi_stations_gdf (GeoDataFrame): Smhi Stations gdf.
+        from_date (String): Fromdate, for checking avalibility in station.
+        to_date (String): Fromdate, for checking avalibility in station.
         
     Returns:
-        tuple(GeoDataFrame, List): GeoDataFrame with SMHI Station key and location appended, List of unique station keys's.
+        GeoDataFrame: GeoDataFrame with SMHI Stations for timeframe and parameter id.
     """
-    smhi_stations_gdf = get_stations_on_parameter_id(param_id=param_id, measuringStations="CORE", from_date=from_date, to_date=to_date)
-
-    # Convert to estimated UTM CRS to achieve accuracy in distances
-    utm_crs = jbv_gdf.estimate_utm_crs()
-    jbv_gdf = jbv_gdf.to_crs(utm_crs)
-    smhi_stations_gdf = smhi_stations_gdf.to_crs(utm_crs)
-    # Keep station point for plotting
-    smhi_stations_gdf["station_location"] = smhi_stations_gdf["geometry"]
-
-    # Perform Spatial join by nearest neighbour
-    nearest_gdf = jbv_gdf.sjoin_nearest(smhi_stations_gdf, how="left")[["key", "station_location"]]
-    jbv_gdf["station_key"] = nearest_gdf["key"]
-    jbv_gdf["station_location"] = nearest_gdf["station_location"].to_crs("EPSG:4326")
-    
-    return jbv_gdf.to_crs("EPSG:4326"), pd.unique(nearest_gdf["key"])
+    smhi_stations_gdf = clean_stations(smhi_stations_gdf)
+    smhi_stations_gdf = filter_stations_type(smhi_stations_gdf, 'CORE')
+    smhi_stations_gdf = filter_stations_on_date(smhi_stations_gdf, from_date, to_date)
+    return smhi_stations_gdf
 
 def clean_station_data(smhi_gdf):
     """
@@ -106,17 +99,46 @@ def filter_station_data_on_date(smhi_df, from_date, to_date):
     Filter on timeframe
 
     Args:
-        smhi_df (GeoDataFrame): GeoDataFrame of SMHI data.
+        smhi_df (DataFrame): DataFrame of SMHI data.
         from_date (string): Date to filter from
         to_date (string): Date to filter to
 
     Returns:
         DataFrame: SMHI Data within timeframe
     """
-    if from_date and to_date:
-        from_mask = (smhi_df["DateTime (UTC)"] > pd.to_datetime(from_date)) & (smhi_df["DateTime (UTC)"] < pd.to_datetime(to_date))
-        smhi_df = smhi_df[from_mask]
+    from_mask = (smhi_df["DateTime (UTC)"] > pd.to_datetime(from_date)) & (smhi_df["DateTime (UTC)"] < pd.to_datetime(to_date))
+    smhi_df = smhi_df[from_mask]
     return smhi_df
+
+def find_closest_stations(jbv_gdf, param_id, from_date, to_date):
+    """
+    Get SMHI data, If dowloaded get from local copy else Download new SMHI data to local and read.
+
+    Args:
+        jbv_gdf (GeoDataFrame): JBV reference data
+        param_id (String): Parameter id in SMHI API.
+        from_date (String): Fromdate, for checking avalibility in station
+        to_date (String): Fromdate, for checking avalibility in station
+        
+    Returns:
+        tuple(GeoDataFrame, List): GeoDataFrame with SMHI Station key and location appended, List of unique station keys's.
+    """
+    smhi_stations_gdf = get_stations_on_parameter_id(param_id=param_id, measuringStations="CORE", from_date=from_date, to_date=to_date)
+
+    # Convert to estimated UTM CRS to achieve accuracy in distances
+    utm_crs = jbv_gdf.estimate_utm_crs()
+    jbv_gdf = jbv_gdf.to_crs(utm_crs)
+    smhi_stations_gdf = smhi_stations_gdf.to_crs(utm_crs)
+    # Keep station point for plotting
+    smhi_stations_gdf["station_location"] = smhi_stations_gdf["geometry"]
+
+    # Perform Spatial join by nearest neighbour
+    nearest_gdf = jbv_gdf.sjoin_nearest(smhi_stations_gdf, how="left")[["key", "station_location"]]
+    jbv_gdf["station_key"] = nearest_gdf["key"]
+    jbv_gdf["station_location"] = nearest_gdf["station_location"].to_crs("EPSG:4326")
+    
+    return jbv_gdf.to_crs("EPSG:4326"), pd.unique(nearest_gdf["key"])
+
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
