@@ -112,7 +112,8 @@ def filter_station_data_on_date(smhi_df, from_date, to_date):
     return smhi_df
 
 def aggregate_smhi_data(smhi_df, rule='W-MON'):
-    numeric = smhi_df.select_dtypes(include="float64").columns
+    print(smhi_df.dtypes)
+    numeric = smhi_df.select_dtypes(include=['float64', 'int64']).columns
     aggregation = {**{column: 'mean' for column in numeric},
                    'station_key': 'first'}
     smhi_df = smhi_df.resample(rule, on='DateTime (UTC)').agg(aggregation)
