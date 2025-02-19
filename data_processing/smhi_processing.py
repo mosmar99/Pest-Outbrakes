@@ -112,49 +112,78 @@ def filter_station_data_on_date(smhi_df, from_date, to_date):
     return smhi_df
 
 def aggregate_smhi_data(smhi_df, rule='W-MON'):
-    print(smhi_df.dtypes)
+    """
+    Data aggregation on datetime for smhi station data dataframe
+
+    Args:
+        smhi_df (DataFrame): Smhi Station data df.
+        rule (String): Aggregation rule, uses pandas aggregation rules
+        
+    Returns:
+        DataFrame: DataFrame with SMHI weather data aggregated on datetime.
+    """
     numeric = smhi_df.select_dtypes(include=['float64', 'int64']).columns
     aggregation = {**{column: 'mean' for column in numeric},
                    'station_key': 'first'}
     smhi_df = smhi_df.resample(rule, on='DateTime (UTC)').agg(aggregation)
     return smhi_df
 
-def process_smhi_data(smhi_df, from_date, to_date):
+def process_smhi_data(smhi_df, from_date, to_date, aggregation_rule='W-MON'):
     """
     All in one Station data pre-processing, 
 
     Args:
         smhi_df (DataFrame): Smhi Station data df.
-        from_date (String): Fromdate, for filtering in data.
-        to_date (String): Fromdate, , for filtering in data.
+        from_date (String): from date, for filtering in data.
+        to_date (String): to date, for filtering in data.
         
     Returns:
         DataFrame: DataFrame with SMHI weather data with standard cleaning and in specified timeframe.
     """
     smhi_df = clean_station_data(smhi_df)
     smhi_df = filter_station_data_on_date(smhi_df, from_date, to_date)
-    smhi_df = aggregate_smhi_data(smhi_df)
+    smhi_df = aggregate_smhi_data(smhi_df, aggregation_rule)
     return smhi_df
 
-def find_closest_stations(jbv_gdf, smhi_stations_gdf):
+def find_closest_stations(gdf, smhi_stations_gdf):
+    """
+    Finds closest stations for every row.
+
+    Args:
+        gdf (GeoDataFrame): GeoDataFrame for wich we want to find the nearest stations.
+        smhi_stations_gdf (GeoDataFrame): Data on stations with geometry.
+        
+    Returns:
+        Tuple(GeoDataFrame, List): original gdf with SMHI station key appended. List of unique nearest station keys
+    """
     # Convert to estimated UTM CRS to achieve accuracy in distances
-    utm_crs = jbv_gdf.estimate_utm_crs()
-    jbv_gdf = jbv_gdf.to_crs(utm_crs)
+    utm_crs = gdf.estimate_utm_crs()
+    gdf = gdf.to_crs(utm_crs)
     smhi_stations_gdf = smhi_stations_gdf.to_crs(utm_crs)
-    # Keep station point for plotting
-    # smhi_stations_gdf["station_location"] = smhi_stations_gdf["geometry"]
 
     # Perform Spatial join by nearest neighbour
-
-    nearest_gdf = jbv_gdf.sjoin_nearest(smhi_stations_gdf, how="inner")
+    nearest_gdf = gdf.sjoin_nearest(smhi_stations_gdf, how="inner")
     nearest_gdf = nearest_gdf[~nearest_gdf.index.duplicated(keep='first')]
 
-    jbv_gdf["station_key"] = nearest_gdf["key"]
-    # jbv_gdf["station_location"] = nearest_gdf["station_location"].to_crs("EPSG:4326")
-    
-    return jbv_gdf.to_crs("EPSG:4326"), pd.unique(nearest_gdf["key"])
+    gdf["station_key"] = nearest_gdf["key"]
+    return gdf.to_crs("EPSG:4326"), pd.unique(nearest_gdf["key"])
 
-def gather_weather_data(gdf:pd.DataFrame, params, f_get_stations, f_get_station_data, from_date, to_date):
+def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_date, to_date, aggregation_rule='W-MON'):
+    """
+    Standard function for gathering closest weather data into a gdf
+
+    Args:
+        gdf (GeoDataFrame): GeoDataFrame for wich we want to find the nearest stations.
+        params (GeoDataFrame): parameter ids to get, parameter id corresponds to one measurement typ, ex temperature, humidity
+        f_get_stations (GeoDataFrame): Function for getting data on stations.
+        f_get_station_data (GeoDataFrame): Function for getting weatherdata from stations.
+        from_date (String): from date, for filtering in data.
+        to_date (String): to date, for filtering in data.
+        aggregation_rule (String): Aggregation rule, uses pandas aggregation rules
+        
+    Returns:
+        Tuple(GeoDataFrame, List): original gdf with SMHI station key appended. List of unique nearest station keys
+    """
     for param_id in params:
         stations_gdf = f_get_stations(param_id)
         stations_gdf = process_stations(stations_gdf, from_date, to_date)
@@ -164,7 +193,7 @@ def gather_weather_data(gdf:pd.DataFrame, params, f_get_stations, f_get_station_
         parameter_data = pd.DataFrame()
         for station_key in stations_to_get:
             station_data_df = f_get_station_data(station_key, param_id)
-            station_data_df = process_smhi_data(station_data_df, from_date, to_date)
+            station_data_df = process_smhi_data(station_data_df, from_date, to_date, aggregation_rule)
             parameter_data = pd.concat([parameter_data, station_data_df])
         
         numeric = parameter_data.select_dtypes(include="float64").columns
