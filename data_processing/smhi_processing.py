@@ -1,80 +1,51 @@
-import requests
 import pandas as pd
-import matplotlib.pyplot as plt
-
-import sys
-import os
-
-parent_dir = os.path.relpath("../")
-
-sys.path.append(parent_dir)
-
-import api
-import csv
-
 import geopandas as gpd
 
-SMHI_URI = {
-    "all_parameters": "https://opendata-download-metobs.smhi.se/api/version/latest/parameter.json",
-    "all_stations": "https://opendata-download-metobs.smhi.se/api/version/latest/parameter",
-}
-    
-def fetch_data_on_key(endpoint, json_key):
+def clean_stations(gdf, dropcols=['latitude','longitude', 'summary', 'link', 'id']):
     """
     Get Dataframe for stations that have parameter id within timeframe.
 
     Args:
-        endpoint (String): Api endpoint string.
-        json_key (String): Key for nested json in SMHI data.
+        smhi_gdf (GeoDataFrame): Smhi stations gdf.
+        dropcols List(String): Columns to drop from data, default=['latitude','longitude', 'summary', 'link', 'id']
         
     Returns:
-        DataFrame: DataFrame with nested json contents,
+        GeoDataFrame: GeoDataFrame with columns dropped and dtypes set.
     """
-    response = requests.get(endpoint)
+    gdf = gdf.drop(dropcols, axis=1)
 
-    if response.status_code == 200:
-        data = response.json()
-        df = pd.DataFrame(data[json_key])
-        return df
-    else:
-        print(f"Error: {response.status_code} - {response.text}")
-        return None
+    gdf['updated'] = pd.to_datetime(gdf['updated'], unit="ms")
+    gdf['from'] = pd.to_datetime(gdf['from'], unit="ms")
+    gdf['to'] = pd.to_datetime(gdf['to'], unit="ms")
 
-def get_stations_on_parameter_id(param_id="19", measuringStations=None, from_date=None, to_date=None):
+    return gdf
+
+
+def filter_stations_on_date(gdf, from_date, to_date):
     """
     Get Dataframe for stations that have parameter id within timeframe.
 
     Args:
-        jbv_gdf (GeoDataFrame): JBV reference data.
-        param_id (String): Parameter id in SMHI API.
         from_date (String): Fromdate, for checking avalibility in station.
         to_date (String): Fromdate, for checking avalibility in station.
         
     Returns:
         GeoDataFrame: GeoDataFrame with SMHI Stations for timeframe and parameter id.
     """
-    df = fetch_data_on_key(f'{SMHI_URI["all_stations"]}/{param_id}.json', "station")
 
-    gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326")
-    gdf = gdf.drop(['latitude','longitude', 'summary', 'link', 'id'], axis=1)
-
-    gdf['updated'] = pd.to_datetime(gdf['updated'], unit="ms")
-    gdf['from'] = pd.to_datetime(gdf['from'], unit="ms")
-    gdf['to'] = pd.to_datetime(gdf['to'], unit="ms")
-
-    if measuringStations:
-        measuringStations_mask = gdf["measuringStations"] == measuringStations
-        gdf = gdf[measuringStations_mask]
-
-    if from_date:
-        from_mask = gdf['from'] < pd.to_datetime(from_date)
-        gdf = gdf[from_mask]
+    from_mask = gdf['from'] < pd.to_datetime(from_date) & gdf['to'] > pd.to_datetime(to_date)
+    gdf = gdf[from_mask]
     
     if to_date:
         to_mask = gdf['to'] > pd.to_datetime(to_date)
         gdf = gdf[to_mask]
     
     return gdf
+
+def filter_stations_type(measuringStations):
+    if measuringStations:
+        measuringStations_mask = gdf["measuringStations"] == measuringStations
+        gdf = gdf[measuringStations_mask]
 
 def find_closest_stations(jbv_gdf, param_id, from_date, to_date):
     """
@@ -105,75 +76,6 @@ def find_closest_stations(jbv_gdf, param_id, from_date, to_date):
     
     return jbv_gdf.to_crs("EPSG:4326"), pd.unique(nearest_gdf["key"])
 
-#region Getting and reading SMHI DATA
-
-def get_station_data_on_key_param(station_key, param_id, from_date, to_date):
-    """
-    Get SMHI data, If dowloaded get from local copy else Download new SMHI data to local and read.
-
-    Args:
-        station_key (String): Station key in SMHI API.
-        param_id (String): Parameter id in SMHI API.
-
-    Returns:
-        DataFrame: DataFrame with SMHI Data for parameter and station.
-    """
-    directory = "./smhi_data"
-    filename = f"{directory}/{param_id}-{station_key}.csv"
-
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    if os.path.exists(filename):
-        smhi_df = read_station_data_file_on_key_param(filename)
-    else:
-        download_csv_station_data_on_key_param(station_key, param_id, filename)
-        smhi_df = read_station_data_file_on_key_param(filename)
-
-    smhi_df = filter_smhi_data_on_date(smhi_df, from_date, to_date)
-    return smhi_df
-
-def download_csv_station_data_on_key_param(station_key, param_id, filename):
-    """
-    Download SMHI data to local data.csv.
-
-    Args:
-        station_key (String): Station key in SMHI API.
-        param_id (String): Parameter id in SMHI API.
-        filename (String): Relative path string to SMHI saved data, ex. ".\\smhi_data\\{param_id}-{station_key}.csv".
-    """
-    endpoint = f"https://opendata-download-metobs.smhi.se/api/version/1.0/parameter/{param_id}/station/{station_key}/period/corrected-archive/data.csv"
-    with requests.get(endpoint, stream=True) as r:
-        lines = (line.decode('utf-8') for line in r.iter_lines())
-        with open(filename, mode='w', newline='', encoding='utf-8') as file:
-            writer = csv.writer(file)
-            for row in csv.reader(lines):
-                writer.writerow(row)
-
-def read_station_data_file_on_key_param(filename):
-    """
-    Read SMHI data from local data.csv.
-
-    Args:
-        filename (String): Relative path string to SMHI saved data, ex. ".\\smhi_data\\{param_id}-{station_key}.csv".
-        
-    Returns:
-        DataFrame: DataFrame with SMHI Data for parameter and station.
-    """
-    data_start = 0
-    with open(filename, 'r', encoding='utf-8') as file:
-        lines = file.readlines()
-        for i, line in enumerate(lines):
-            #Break on "Kvalitet, Exists in all parameters"
-            if 'Kvalitet' in line:
-                data_start = i
-                break
-    
-    smhi_df = pd.read_csv(filename, skiprows=data_start, delimiter=';')
-    smhi_df = clean_station_data(smhi_df)
-
-    return smhi_df
-
 def clean_station_data(smhi_gdf):
     """
     Reformat SMHI Data in unified format and drop irrelevant rows.
@@ -199,7 +101,7 @@ def clean_station_data(smhi_gdf):
     
     return smhi_gdf
 
-def filter_smhi_data_on_date(smhi_df, from_date, to_date):
+def filter_station_data_on_date(smhi_df, from_date, to_date):
     """
     Filter on timeframe
 
@@ -216,9 +118,8 @@ def filter_smhi_data_on_date(smhi_df, from_date, to_date):
         smhi_df = smhi_df[from_mask]
     return smhi_df
 
-#endregion
-
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
     from shapely.geometry import LineString
     # """
     # Example usage of module
@@ -235,7 +136,7 @@ if __name__ == "__main__":
     gradings_df = api.get_gradings(from_date=str(from_date), to_date=str(to_date), crop="Höstvete", pest="svartpricksjuka")
     
     jbv_gdf = gpd.GeoDataFrame(gradings_df, geometry=gpd.points_from_xy(gradings_df.longitud, gradings_df.latitud), crs="EPSG:3006")
-    jbv_gdf["geometry"] = jbv_gdf["geometry"].to_crs("EPSG:4326")
+    jbv_gdf = jbv_gdf.to_crs("EPSG:4326")
 
     # REMOVE ENTRIES NOT IN SWEDEN! Should probably be implemented somewhere :)
     countries = ".\\geodata\\ne_110m_admin_0_countries\\ne_110m_admin_0_countries.shp"
