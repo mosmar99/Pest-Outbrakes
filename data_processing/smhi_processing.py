@@ -195,9 +195,7 @@ def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_da
             station_data_df = f_get_station_data(station_key, param_id)
             station_data_df = process_smhi_data(station_data_df, from_date, to_date, aggregation_rule)
             parameter_data = pd.concat([parameter_data, station_data_df])
-
         
-        numeric = parameter_data.select_dtypes(include="float64").columns
         gdf = gdf.merge(parameter_data,
                             how='left',
                             left_on=['graderingsdatum', 'station_key'],
