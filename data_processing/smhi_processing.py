@@ -162,7 +162,7 @@ def find_closest_stations(gdf, smhi_stations_gdf):
     smhi_stations_gdf = smhi_stations_gdf.to_crs(utm_crs)
 
     # Perform Spatial join by nearest neighbour
-    nearest_gdf = gdf.sjoin_nearest(smhi_stations_gdf, how="inner")
+    nearest_gdf = gdf.sjoin_nearest(smhi_stations_gdf, how="left")
     nearest_gdf = nearest_gdf[~nearest_gdf.index.duplicated(keep='first')]
 
     gdf["station_key"] = nearest_gdf["key"]
@@ -195,10 +195,11 @@ def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_da
             station_data_df = f_get_station_data(station_key, param_id)
             station_data_df = process_smhi_data(station_data_df, from_date, to_date, aggregation_rule)
             parameter_data = pd.concat([parameter_data, station_data_df])
+
         
         numeric = parameter_data.select_dtypes(include="float64").columns
         gdf = gdf.merge(parameter_data,
-                            how='inner',
+                            how='left',
                             left_on=['graderingsdatum', 'station_key'],
                             right_on=['DateTime (UTC)', 'station_key'])
         gdf = gdf.drop('station_key', axis=1)
