@@ -5,12 +5,13 @@ import visualize as viz
 import pandas as pd
 
 if __name__ == "__main__":
-    crop='höstvete'
-    pest = 'Svartpricksjuka'
-    data_df = jbv_api.get_gradings(from_date="2015-08-04", to_date="2025-02-01", crop=crop, pest=pest)
+    groda='höstvete'
+    skadegorare = 'Svartpricksjuka'
+    data_json = jbv_api.get_gradings(from_date="2015-08-04", to_date="2025-02-01", groda=groda, skadegorare=skadegorare)
     print("---FETCHED JBV-DATA")
 
-    data_df = jbv_process.feature_extraction(data_df)
+    wanted_features = ['groda', 'skadegorare', 'graderingsdatum', 'utvecklingsstadium', 'varde', 'skadegorare', 'latitud', 'longitud']
+    data_df = jbv_process.feature_extraction(data_json, wanted_features) 
     print('1', data_df.shape)
     data_df = jbv_process.drop_rows_with_missing_values(data_df)
     print('2', data_df.shape)
@@ -22,23 +23,5 @@ if __name__ == "__main__":
     print('5', data_gdf.shape)
     data_gdf = jbv_process.remove_outside_sweden_coordinates(data_gdf)
     print('6', data_gdf.shape)
-    print('6', data_gdf.columns)
-    data_gdf = jbv_process.aggregate_data_for_plantations(data_gdf, time_period='MS')
-    print(data_gdf)
-
-    # top_latitud, top_longitud = jbv_process.get_uniq_plantation_coord(data_df, selector=1)
-    # plantation_df = jbv_process.get_plantation_by_coord(data_df, top_latitud, top_longitud)
-    # plantation_df = jbv_process.transform_date(data_df)
-    # plantation_df
-    # # geopandas, geometri kolumn, aggregerat veckovis på datum, 
-    # print(plantation_df.head())
-    # print("---PROCESSED JBV-DATA")
-
-    # print("---FETCHED SMHI-DATA")
-    # print("---PROCESSED SMHI-DATA")
-
-    # viz.lineplot(extracted_df, crop, pest, top_latitud, top_longitud)
-    # print("Extracted Data:")
-    # print(extracted_df.head())
-    # print(extracted_df.shape)
-    
+    data_gdf = jbv_process.aggregate_data_for_plantations(data_gdf, time_period='week')
+    print('7', data_gdf.shape, '\n')

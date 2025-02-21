@@ -3,45 +3,34 @@ import numpy as np
 import geopandas as gpd
 from shapely.geometry import Point
 
-def feature_extraction(data_df):
+def feature_extraction(data_df, wanted_features):
     """
-    Extracts grading data for a crop and pest from a nested dataframe structure.
+    Extracts user specified feature from json table
 
     Args:
-        data_df (pd.DataFrame): The input dataframe containing grading information.
-        crop (str): The crop associated with the grading data.
-        pest (str): The pest associated with the grading data.
+        data_df (json): Raw json api inputs, for a specific crop and pest.
+        wanted_features (list of strings): Simply a list of the feature you want to extract
 
     Returns:
         pd.DataFrame: A cleaned and sorted dataframe containing extracted grading data.
     """
 
-    extracted_data = []
-    for _, row in data_df.iterrows():
-        crop = row['groda']
-        latitud = row['latitud'] 
-        longitud = row['longitud'] 
-        graderingstillfalle_list = row['graderingstillfalleList']
+    data_df = pd.DataFrame(data_df)
 
-        for entry in graderingstillfalle_list:
-            for grading in entry['graderingList']:
-                if 'varde' not in grading:
-                    continue
-                extracted_data.append({
-                    'crop': crop,
-                    'skadegorare': grading['skadegorare'],  
-                    'graderingsdatum': entry['graderingsdatum'],
-                    'varde': grading['varde'],
-                    'utvecklingsstadium': entry['utvecklingsstadium'],
-                    'latitud': latitud,
-                    'longitud': longitud
-                })
+    exploded_graderingstillfalleList = data_df.explode('graderingstillfalleList')
+    normalized_graderingstillfalleList = pd.json_normalize(exploded_graderingstillfalleList['graderingstillfalleList'])
 
-    result_df = pd.DataFrame(extracted_data)
-    result_df['graderingsdatum'] = pd.to_datetime(result_df['graderingsdatum'])
-    result_df.sort_values(by='graderingsdatum')
+    normalized_graderingList = normalized_graderingstillfalleList.explode('graderingList')
+    normalized_graderingList = pd.json_normalize(normalized_graderingList['graderingList'])
 
-    return result_df
+    combined_df = pd.concat([exploded_graderingstillfalleList.reset_index(drop=True), normalized_graderingstillfalleList.reset_index(drop=True)], axis=1)
+    combined_df = pd.concat([combined_df.reset_index(drop=True), normalized_graderingList.reset_index(drop=True)], axis=1)
+    combined_df = combined_df.drop(columns=['graderingstillfalleList', 'graderingList'])
+
+    desired_features_df = combined_df[wanted_features]
+    desired_features_df['graderingsdatum'] = pd.to_datetime(desired_features_df['graderingsdatum'])
+
+    return desired_features_df
 
 def remove_outside_sweden_coordinates(data_gdf):
     """Drops datapoints (rows) with coordinates located outside of Sweden
@@ -103,47 +92,10 @@ def introduce_nan_for_large_gaps(data_gdf, days=30):
 
     return data_gdf
 
-def aggregate_data_by_time_period(data_gdf, time_period='W-MON'):
-    """
-    Aggregates the numeric data in the GeoDataFrame by a specified time period based on the 'graderingsdatum' column.
+import pandas as pd
 
-    Args:
-        data_gdf (gpd.GeoDataFrame): The input GeoDataFrame containing date-related data.
-        time_period (str): The time period for aggregation (e.g., 'W-MON' for weekly).
-
-    Returns:
-        gpd.GeoDataFrame: The modified GeoDataFrame with aggregated values for the specified time period.
-    """
-    
-    # aggregation is done by date so the date column "graderingsdatum" is used as index
-    aggregated_data = data_gdf.groupby(pd.Grouper(key='graderingsdatum', freq=time_period)).mean(numeric_only=True)
-    aggregated_data.reset_index(inplace=True)
-
-    return data_gdf
-
-def aggregate_data_for_plantations(data_gdf, time_period='W-MON'):
-    """
-    Aggregates data for each plantation based on its geometry.
-
-    Args:
-        data_gdf (gpd.GeoDataFrame): The input GeoDataFrame containing plantation data.
-        time_period (str): The time period for aggregation (e.g., 'W-MON' for weekly).
-
-    Returns:
-        gpd.GeoDataFrame: A GeoDataFrame with aggregated values for each plantation.
-    """
-
-    aggregated_data = []
-    plantations = data_gdf.groupby(data_gdf['geometry'])
-    for geom, plantation in plantations:
-
-        aggregated_plantation = aggregate_data_by_time_period(plantation, time_period)
-        aggregated_plantation['geometry'] = geom
-        aggregated_data.append(plantation)
-
-    return aggregated_data
-
-
+def aggregate_data_for_plantations(data_gdf, time_period='week'):
+    pass
 
 def sweref99tm_to_wgs84(data_df):
     """

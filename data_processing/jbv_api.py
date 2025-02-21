@@ -25,7 +25,7 @@ def get_all_pests():
     Returns:
         Optional[pd.DataFrame]: A dataframe containing all pest data if successful, otherwise None.
     """
-    return api.fetch_data(URI["all_pests"], auth=auth_details, return_format='pandas')
+    return api.fetch_data(URI["all_pests"], auth=auth_details)
 
 def get_all_crops():
     """
@@ -34,7 +34,7 @@ def get_all_crops():
     Returns:
         Optional[pd.DataFrame]: A dataframe containing all crop data if successful, otherwise None.
     """
-    return api.fetch_data(URI["all_crops"], auth=auth_details, return_format='pandas')
+    return api.fetch_data(URI["all_crops"], auth=auth_details)
 
 def get_crops_linked_to_gradings():
     """
@@ -43,7 +43,7 @@ def get_crops_linked_to_gradings():
     Returns:
         Optional[pd.DataFrame]: A dataframe containing crops linked to grading data if successful, otherwise None.
     """
-    return api.fetch_data(URI["crops_linked_to_gradings"], auth=auth_details, return_format='pandas')
+    return api.fetch_data(URI["crops_linked_to_gradings"], auth=auth_details)
 
 def get_pests_linked_to_gradings():
     """
@@ -52,9 +52,9 @@ def get_pests_linked_to_gradings():
     Returns:
         Optional[pd.DataFrame]: A dataframe containing pests linked to grading data if successful, otherwise None.
     """
-    return api.fetch_data(URI["pests_linked_to_gradings"], auth=auth_details, return_format='pandas')
+    return api.fetch_data(URI["pests_linked_to_gradings"], auth=auth_details)
 
-def get_gradings(from_date="2019-08-04", to_date="2019-11-22", crop="Potatis", pest="Bladlus"):
+def get_gradings(from_date="2019-08-04", to_date="2019-11-22", groda="Potatis", skadegorare="Bladlus"):
     """
     Fetches grading data for a date range, crop, and pest from the API.
 
@@ -65,10 +65,10 @@ def get_gradings(from_date="2019-08-04", to_date="2019-11-22", crop="Potatis", p
         pest (str): The pest name to retrieve grading data for.
 
     Returns:
-        Optional[pd.DataFrame]: A dataframe containing grading data if successful, otherwise None.
+        data_df (json): Raw api output
     """
-    endpoint = f"{URI['gradings']}?fran={from_date}&till={to_date}&groda={crop}&skadegorare={pest}"
-    return api.fetch_data(endpoint, auth=auth_details, return_format='pandas')
+    endpoint = f"{URI['gradings']}?fran={from_date}&till={to_date}&groda={groda}&skadegorare={skadegorare}"
+    return api.fetch_data(endpoint, auth=auth_details)
 
 def get_update_information():
     """
@@ -77,4 +77,4 @@ def get_update_information():
     Returns:
         Optional[pd.DataFrame]: A dataframe containing update information if successful, otherwise None.
     """
-    return api.fetch_data(URI["update_information"], auth=auth_details, return_format='pandas')
+    return api.fetch_data(URI["update_information"], auth=auth_details)

@@ -1,6 +1,5 @@
 
 import requests
-
 import pandas as pd
 import geopandas as gpd
 from requests.auth import HTTPBasicAuth
@@ -10,7 +9,7 @@ import os
 
 import csv
 
-def fetch_data(endpoint, auth=None, return_format='json'):
+def fetch_data(endpoint, auth=None):
     """
     Retrieves data from an API endpoint using HTTP Basic Authentication.
 
@@ -25,10 +24,7 @@ def fetch_data(endpoint, auth=None, return_format='json'):
 
     if response.status_code == 200:
         data = response.json()
-        if return_format == 'json':
-            return data
-        elif return_format == 'pandas':
-            return pd.DataFrame(data)
+        return data
     else:
         print(f"Error: {response.status_code} - {response.text}")
         return None
