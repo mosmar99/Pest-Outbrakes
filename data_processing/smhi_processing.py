@@ -111,7 +111,7 @@ def filter_station_data_on_date(smhi_df, from_date, to_date):
     smhi_df = smhi_df[from_mask]
     return smhi_df
 
-def aggregate_smhi_data(smhi_df, rule='W-MON'):
+def aggregate_smhi_data(smhi_df, how='mean', rule='W-MON'):
     """
     Data aggregation on datetime for smhi station data dataframe
 
@@ -123,12 +123,12 @@ def aggregate_smhi_data(smhi_df, rule='W-MON'):
         DataFrame: DataFrame with SMHI weather data aggregated on datetime.
     """
     numeric = smhi_df.select_dtypes(include=['float64', 'int64']).columns
-    aggregation = {**{column: 'mean' for column in numeric},
+    aggregation = {**{column: how for column in numeric},
                    'station_key': 'first'}
     smhi_df = smhi_df.resample(rule, on='DateTime (UTC)').agg(aggregation)
     return smhi_df
 
-def process_smhi_data(smhi_df, from_date, to_date, aggregation_rule='W-MON'):
+def process_smhi_data(smhi_df, from_date, to_date, aggregaton_how=['mean'], aggregation_rule='W-MON'):
     """
     All in one Station data pre-processing, 
 
@@ -142,7 +142,7 @@ def process_smhi_data(smhi_df, from_date, to_date, aggregation_rule='W-MON'):
     """
     smhi_df = clean_station_data(smhi_df)
     smhi_df = filter_station_data_on_date(smhi_df, from_date, to_date)
-    smhi_df = aggregate_smhi_data(smhi_df, aggregation_rule)
+    smhi_df = aggregate_smhi_data(smhi_df, aggregaton_how, aggregation_rule)
     return smhi_df
 
 def find_closest_stations(gdf, smhi_stations_gdf):
@@ -174,7 +174,7 @@ def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_da
 
     Args:
         gdf (GeoDataFrame): GeoDataFrame for wich we want to find the nearest stations.
-        params (GeoDataFrame): parameter ids to get, parameter id corresponds to one measurement typ, ex temperature, humidity
+        params (List(Tuple(String, String))): List of tuple with parameter id to get, and aggregation type ex. 'mean', 'sum', 'max', 'min'
         f_get_stations (GeoDataFrame): Function for getting data on stations.
         f_get_station_data (GeoDataFrame): Function for getting weatherdata from stations.
         from_date (String): from date, for filtering in data.
@@ -184,7 +184,7 @@ def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_da
     Returns:
         Tuple(GeoDataFrame, List): original gdf with SMHI station key appended. List of unique nearest station keys
     """
-    for param_id in params:
+    for param_id, aggregaton_how in params:
         stations_gdf = f_get_stations(param_id)
         stations_gdf = process_stations(stations_gdf, from_date, to_date)
 
@@ -193,9 +193,9 @@ def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_da
         parameter_data = pd.DataFrame()
         for station_key in stations_to_get:
             station_data_df = f_get_station_data(station_key, param_id)
-            station_data_df = process_smhi_data(station_data_df, from_date, to_date, aggregation_rule)
+            station_data_df = process_smhi_data(station_data_df, from_date, to_date, aggregaton_how, aggregation_rule)
             parameter_data = pd.concat([parameter_data, station_data_df])
-        
+
         gdf = gdf.merge(parameter_data,
                             how='left',
                             left_on=['graderingsdatum', 'station_key'],
@@ -216,8 +216,7 @@ if __name__ == "__main__":
     param_id = "2"
     param_id_2 = "5"
     param_id_3 = "10"
-    params = [param_id, param_id_2, param_id_3]
-
+    params = [(param_id, 'mean'), (param_id_2, 'sum'), (param_id_3, 'sum')]
 
     # smhi_stations_gdf = smhi_api.get_stations_on_parameter_id(param_id)
     # smhi_stations_gdf = process_stations(smhi_stations_gdf, from_date, to_date)
