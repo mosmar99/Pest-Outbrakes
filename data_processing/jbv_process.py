@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import geopandas as gpd
 from shapely.geometry import Point
+import pandas as pd
 
 def feature_extraction(data_df, wanted_features):
     """
@@ -92,10 +93,33 @@ def introduce_nan_for_large_gaps(data_gdf, days=30):
 
     return data_gdf
 
-import pandas as pd
+def aggregate_data_for_plantations(data_gdf, time_period='W-MON'):
+    """
+    Aggregates the feature columns: varde & utvecklingsstadium with regards to specified timeframe
 
-def aggregate_data_for_plantations(data_gdf, time_period='week'):
-    pass
+    Args:
+        data_gdf (gpd.GeoDataFrame): The input GeoDataFrame containing information
+        time_period (string): String specifiying time_period, should be either 'W-MON', 'M' or 'Y-DEC'
+
+    Returns:
+        data_gdf (gpd.GeoDataFrame): Output GeoDataFrame containing aggregated values.
+    """
+    data_gdf['time_period'] = data_gdf['graderingsdatum'].dt.to_period(time_period)
+
+    agg_dict = {
+        'varde': 'mean',
+        'utvecklingsstadium': 'first',
+        'groda': 'first',
+    }
+
+    aggregated_df = data_gdf.groupby(['time_period', 'geometry']).agg(agg_dict).reset_index()
+    skadegorare_series = data_gdf.groupby(['time_period', 'geometry'])['skadegorare'].first().reset_index()
+    aggregated_df = pd.merge(aggregated_df, skadegorare_series[['time_period', 'geometry', 'skadegorare']], on=['time_period', 'geometry'], how='left')
+    aggregated_df = aggregated_df.rename(columns={'time_period': 'graderingsdatum'})
+
+    return aggregated_df
+
+
 
 def sweref99tm_to_wgs84(data_df):
     """
