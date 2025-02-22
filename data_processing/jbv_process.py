@@ -108,7 +108,7 @@ def aggregate_data_for_plantations(data_gdf, time_period='W-MON'):
 
     agg_dict = {
         'varde': 'mean',
-        'utvecklingsstadium': 'first',
+        'utvecklingsstadium': 'mean',
         'groda': 'first',
     }
 
