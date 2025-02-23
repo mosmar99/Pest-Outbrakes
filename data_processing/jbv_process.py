@@ -115,7 +115,9 @@ def aggregate_data_for_plantations(data_gdf, time_period='W-MON'):
     aggregated_df = data_gdf.groupby(['time_period', 'geometry']).agg(agg_dict).reset_index()
     skadegorare_series = data_gdf.groupby(['time_period', 'geometry'])['skadegorare'].first().reset_index()
     aggregated_df = pd.merge(aggregated_df, skadegorare_series[['time_period', 'geometry', 'skadegorare']], on=['time_period', 'geometry'], how='left')
-    aggregated_df = aggregated_df.rename(columns={'time_period': 'graderingsdatum'})
+
+    aggregated_df['graderingsdatum'] = aggregated_df['time_period'].dt.start_time
+    aggregated_df = aggregated_df.drop(columns=['time_period'])
 
     return aggregated_df
 
