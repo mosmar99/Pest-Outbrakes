@@ -24,5 +24,7 @@ if __name__ == "__main__":
     print('5', data_gdf.shape)
     data_gdf = jbv_process.remove_outside_sweden_coordinates(data_gdf)
     print('6', data_gdf.shape)
-    data_gdf = jbv_process.aggregate_data_for_plantations(data_gdf, time_period='A-DEC')
+    data_gdf = jbv_process.aggregate_data_for_plantations(data_gdf, time_period='W-MON')
     print('7', data_gdf.shape)
+
+    print(data_gdf.head())
