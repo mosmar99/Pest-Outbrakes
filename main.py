@@ -26,5 +26,7 @@ if __name__ == "__main__":
     print('6', data_gdf.shape)
     data_gdf = jbv_process.aggregate_data_for_plantations(data_gdf, time_period='W-MON')
     print('7', data_gdf.shape)
-
-    print(data_gdf.head())
+    
+    most_frequent_plantation_gdf = jbv_process.get_most_frequent_plantation(data_gdf)
+    padd_most_frequent_plantation_gdf = jbv_process.introduce_nan_for_large_gaps(most_frequent_plantation_gdf)
+    viz.lineplot(padd_most_frequent_plantation_gdf)

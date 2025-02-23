@@ -76,7 +76,7 @@ def drop_duplicate_rows(data_df):
     return data_df.drop_duplicates()
 
 
-def introduce_nan_for_large_gaps(data_gdf, days=30):
+def introduce_nan_for_large_gaps(data_gdf, gap_days=30):
     """
     Introduces NaN values for large gaps in the 'graderingsdatum' column to prevent line drawing in graphs.
 
@@ -86,11 +86,12 @@ def introduce_nan_for_large_gaps(data_gdf, days=30):
     Returns:
         gpd.GeoDataFrame: The modified GeoDataFrame with NaN values introduced for large gaps.
     """
-    # Define the threshold for large gaps
-    threshold = pd.Timedelta(days)
-    gap = data_gdf['graderingsdatum'].diff() > threshold
-    data_gdf.loc[gap, ['varde', 'utvecklingsstadium']] = np.nan
-
+    threshold = pd.Timedelta(days=gap_days)
+    for geom, group in data_gdf.groupby('geometry'):
+        gap = group['graderingsdatum'].diff() > threshold
+        mask = data_gdf['geometry'] == geom
+        data_gdf.loc[mask & gap, ['varde', 'utvecklingsstadium']] = np.nan
+    data_gdf = data_gdf.sort_values(by='graderingsdatum').reset_index(drop=True)
     return data_gdf
 
 def aggregate_data_for_plantations(data_gdf, time_period='W-MON'):
@@ -111,17 +112,18 @@ def aggregate_data_for_plantations(data_gdf, time_period='W-MON'):
         'utvecklingsstadium': 'mean',
         'groda': 'first',
     }
-
     aggregated_df = data_gdf.groupby(['time_period', 'geometry']).agg(agg_dict).reset_index()
+
     skadegorare_series = data_gdf.groupby(['time_period', 'geometry'])['skadegorare'].first().reset_index()
     aggregated_df = pd.merge(aggregated_df, skadegorare_series[['time_period', 'geometry', 'skadegorare']], on=['time_period', 'geometry'], how='left')
+
+    if aggregated_df.columns.duplicated().any():
+        aggregated_df = aggregated_df.loc[:, ~aggregated_df.columns.duplicated()]
 
     aggregated_df['graderingsdatum'] = aggregated_df['time_period'].dt.start_time
     aggregated_df = aggregated_df.drop(columns=['time_period'])
 
     return aggregated_df
-
-
 
 def sweref99tm_to_wgs84(data_df):
     """
@@ -158,7 +160,7 @@ def clean_coordinate_format(df):
         df (pd.DataFrame): The input dataframe containing 'latitud' and 'longitud' columns.
 
     Returns:
-        pd.DataFrame: The dataframe with updated 'latitud' and 'longitud' columns.
+        data_gdf (gpd.GeoDataFrame): The dataframe with updated 'latitud' and 'longitud' columns.
     """
     latitud_trimmed = df['latitud'].astype(str).str[:7]
     longitud_trimmed = df['longitud'].astype(str).str[:6]
@@ -172,58 +174,34 @@ def clean_coordinate_format(df):
 
     return df
 
-def get_all_unique_coordinates(data_gdf):
+def get_most_frequent_plantation(data_gdf):
     """
-    Returns all unique geometry coordinates from the GeoDataFrame.
+    Retrieves all rows from the GeoDataFrame that correspond to the most frequently occurring geometry.
 
     Args:
-        data_gdf (gpd.GeoDataFrame): The input GeoDataFrame containing geometry data.
+        data_gdf (gpd.GeoDataFrame): The input GeoDataFrame containing plantation data.
 
     Returns:
-        pd.Dataframe: A list of unique geometry coordinates.
+        gpd.GeoDataFrame: A GeoDataFrame containing all rows that match the most frequent geometry.
     """
-    unique_coordinates = set()
-
-    for geom in data_gdf.geometry:
-        unique_coordinates.update(geom.coords)
-
-    return pd.DataFrame(unique_coordinates, columns=['longitude', 'latitude'])
-
-
-def get_uniq_plantation_coord(data_df, selector=1):
-    """
-    Retrieves unique latitude-longitude combinations, sorted by occurrence count.
-
-    Args:
-        data_df (pd.DataFrame): The input dataframe containing location data.
-        selector (int): If 0, returns a sorted dataframe of descending coordinate frequencies; 
-                        otherwise, returns frequency coordinates from a list of descending coordinate frequencies.
-    Returns:
-        Tuple[float, float]: Tuple of latitude and longitude
-    """
-    if selector == 0:
-        combination_counts = data_df.groupby(['latitud', 'longitud']).size().reset_index(name='Count')
-        sorted_combination_counts = combination_counts.sort_values(by='Count', ascending=False)
-        return sorted_combination_counts
-    else:
-        sorted_combination_counts = get_uniq_plantation_coord(data_df, selector=0)
-        top_combination = sorted_combination_counts.head(selector)
-        top_latitud = top_combination['latitud'].values[0]
-        top_longitud = top_combination['longitud'].values[0]
-
-        return top_latitud, top_longitud
+    grouped = data_gdf.groupby('geometry').size().reset_index(name='count')
+    most_frequent_group = grouped.loc[grouped['count'].idxmax()]
+    result = data_gdf[data_gdf['geometry'] == most_frequent_group['geometry']]
+    return result
     
-def get_plantation_by_coordinates(data_df, latitud, longitud):
+def get_plantation_by_coordinates(data_gdf, point):
     """
     Filters the dataframe for rows matching the given latitude and longitude.
 
     Args:
-        data_df (pd.DataFrame): The input dataframe containing location data.
-        latitud (float): The latitude to filter by.
-        longitud (float): The longitude to filter by.
+        data_gdf (pd.DataFrame): The input dataframe containing location data.
+        point (Shapley Point): The latitude, lonitude to filter by.
 
     Returns:
-        pd.DataFrame: A dataframe containing only rows that match the specified coordinates.
+        filtered_rows_gdf (gpd.GeoDataFrame): A dataframe containing only rows that match the specified coordinates.
     """
-    filtered_rows_df = data_df[(data_df['latitud'] == latitud) & (data_df['longitud'] == longitud)]
-    return filtered_rows_df
+    latitud = point.y
+    longitud = point.x
+    
+    filtered_rows_gdf = data_gdf[(data_gdf['latitud'] == latitud) & (data_gdf['longitud'] == longitud)]
+    return filtered_rows_gdf
