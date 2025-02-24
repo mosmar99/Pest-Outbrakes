@@ -64,16 +64,17 @@ def drop_rows_with_missing_values(data_df):
     """
     return data_df.dropna(subset=['graderingsdatum', 'varde', 'utvecklingsstadium', 'latitud', 'longitud'])
 
-def drop_duplicate_rows(data_df):
-    """Drops duplicate rows from the dataframe.
+def drop_duplicates(data_df):
+    """Drops duplicate rows & columns from the dataframe.
 
     Args:
         data_df (pd.DataFrame): The input dataframe.
 
     Returns:
-        pd.DataFrame: The dataframe with duplicate rows removed.
+        pd.DataFrame: The dataframe with duplicate rows & columns removed.
     """
-    return data_df.drop_duplicates()
+    data_df = data_df.drop_duplicates()
+    return data_df.loc[:, ~data_df.columns.duplicated()]
 
 
 def introduce_nan_for_large_gaps(data_gdf, gap_days=30):
@@ -117,8 +118,6 @@ def aggregate_data_for_plantations(data_gdf, time_period='W-MON'):
     skadegorare_series = data_gdf.groupby(['time_period', 'geometry'])['skadegorare'].first().reset_index()
     aggregated_df = pd.merge(aggregated_df, skadegorare_series[['time_period', 'geometry', 'skadegorare']], on=['time_period', 'geometry'], how='left')
 
-    if aggregated_df.columns.duplicated().any():
-        aggregated_df = aggregated_df.loc[:, ~aggregated_df.columns.duplicated()]
 
     aggregated_df['graderingsdatum'] = aggregated_df['time_period'].dt.start_time
     aggregated_df = aggregated_df.drop(columns=['time_period'])
