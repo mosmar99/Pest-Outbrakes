@@ -48,4 +48,4 @@ if __name__ == "__main__":
     most_frequent_plantation_gdf = jbv_process.get_most_frequent_plantation(data_gdf)
     padd_most_frequent_plantation_gdf = jbv_process.introduce_nan_for_large_gaps(most_frequent_plantation_gdf)
     viz.lineplot(padd_most_frequent_plantation_gdf)
-    viz.lineplot_w_temp(padd_most_frequent_plantation_gdf)
+    viz.lineplot_w_weather(padd_most_frequent_plantation_gdf)
