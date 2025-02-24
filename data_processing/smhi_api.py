@@ -3,7 +3,7 @@ import geopandas as gpd
 
 import os
 
-import api
+import data_processing.api as api
 
 SMHI_URI = {
     "base_uri": "https://opendata-download-metobs.smhi.se/api/version/1.0",

@@ -125,7 +125,7 @@ def aggregate_smhi_data(smhi_df, how='mean', rule='W-MON'):
     numeric = smhi_df.select_dtypes(include=['float64', 'int64']).columns
     aggregation = {**{column: how for column in numeric},
                    'station_key': 'first'}
-    smhi_df = smhi_df.resample(rule, on='DateTime (UTC)').agg(aggregation)
+    smhi_df = smhi_df.resample(rule, on='DateTime (UTC)', label='left').agg(aggregation)
     return smhi_df
 
 def process_smhi_data(smhi_df, from_date, to_date, aggregaton_how=['mean'], aggregation_rule='W-MON'):
@@ -200,6 +200,7 @@ def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_da
                             how='left',
                             left_on=['graderingsdatum', 'station_key'],
                             right_on=['DateTime (UTC)', 'station_key'])
+
         gdf = gdf.drop('station_key', axis=1)
 
     return gdf

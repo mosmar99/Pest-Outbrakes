@@ -106,6 +106,7 @@ def aggregate_data_for_plantations(data_gdf, time_period='W-MON'):
     Returns:
         data_gdf (gpd.GeoDataFrame): Output GeoDataFrame containing aggregated values.
     """
+
     data_gdf['time_period'] = data_gdf['graderingsdatum'].dt.to_period(time_period)
 
     agg_dict = {
@@ -117,9 +118,12 @@ def aggregate_data_for_plantations(data_gdf, time_period='W-MON'):
 
     skadegorare_series = data_gdf.groupby(['time_period', 'geometry'])['skadegorare'].first().reset_index()
     aggregated_df = pd.merge(aggregated_df, skadegorare_series[['time_period', 'geometry', 'skadegorare']], on=['time_period', 'geometry'], how='left')
+    aggregated_df = gpd.GeoDataFrame(aggregated_df, geometry='geometry')
 
+    # dt.to_period('W-MON') results in a time period from tuesday to monday. 
+    # - pd.DateOffset(days=1) puts the label on the day to the left which is the monday before the time period
+    aggregated_df['graderingsdatum'] = aggregated_df['time_period'].dt.start_time - pd.DateOffset(days=1)
 
-    aggregated_df['graderingsdatum'] = aggregated_df['time_period'].dt.start_time
     aggregated_df = aggregated_df.drop(columns=['time_period'])
 
     return aggregated_df
