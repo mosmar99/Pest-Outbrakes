@@ -18,7 +18,6 @@ if __name__ == "__main__":
     print('2', data_df.shape)
     data_df = jbv_process.drop_duplicates(data_df)
     print('3', data_df.shape)
-    print(data_df.head())
     data_df = jbv_process.clean_coordinate_format(data_df)
     print('4', data_df.shape)
     data_gdf = jbv_process.sweref99tm_to_wgs84(data_df)
