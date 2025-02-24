@@ -1,8 +1,6 @@
 import os
-import requests
-import pandas as pd
+import data_processing.api as api
 from dotenv import load_dotenv
-from pyproj import Transformer
 from requests.auth import HTTPBasicAuth
 
 URI = {
@@ -12,32 +10,13 @@ URI = {
     "crops_linked_to_gradings": "https://api.jordbruksverket.se/rest/povapi/groda/alla",
     "gradings": "https://api.jordbruksverket.se/rest/povapi/graderingar",
     "update_information": "https://api.jordbruksverket.se/rest/povapi/uppdateringsinformation",
-    "smhi": "https://opendata-download-metobs.smhi.se/api/"
 }
 
 load_dotenv()
 USERNAME = os.getenv("API_USERNAME")
 PASSWORD = os.getenv("API_PASSWORD")
+auth_details = HTTPBasicAuth(USERNAME, PASSWORD)
 print(USERNAME, PASSWORD)
-def fetch_data(endpoint):
-    """
-    Retrieves data from an API endpoint using HTTP Basic Authentication.
-
-    Args:
-        endpoint (str): The API endpoint URL to fetch data from.
-
-    Returns:
-        Optional[pd.DataFrame]: A dataframe containing the fetched data if successful, otherwise None.
-    """
-    response = requests.get(endpoint, auth=HTTPBasicAuth(USERNAME, PASSWORD))
-
-    if response.status_code == 200:
-        data = response.json()
-        df = pd.DataFrame(data)
-        return df
-    else:
-        print(f"Error: {response.status_code} - {response.text}")
-        return None
 
 def get_all_pests():
     """
@@ -46,7 +25,7 @@ def get_all_pests():
     Returns:
         Optional[pd.DataFrame]: A dataframe containing all pest data if successful, otherwise None.
     """
-    return fetch_data(URI["all_pests"])
+    return api.fetch_data(URI["all_pests"], auth=auth_details)
 
 def get_all_crops():
     """
@@ -55,7 +34,7 @@ def get_all_crops():
     Returns:
         Optional[pd.DataFrame]: A dataframe containing all crop data if successful, otherwise None.
     """
-    return fetch_data(URI["all_crops"])
+    return api.fetch_data(URI["all_crops"], auth=auth_details)
 
 def get_crops_linked_to_gradings():
     """
@@ -64,7 +43,7 @@ def get_crops_linked_to_gradings():
     Returns:
         Optional[pd.DataFrame]: A dataframe containing crops linked to grading data if successful, otherwise None.
     """
-    return fetch_data(URI["crops_linked_to_gradings"])
+    return api.fetch_data(URI["crops_linked_to_gradings"], auth=auth_details)
 
 def get_pests_linked_to_gradings():
     """
@@ -73,9 +52,9 @@ def get_pests_linked_to_gradings():
     Returns:
         Optional[pd.DataFrame]: A dataframe containing pests linked to grading data if successful, otherwise None.
     """
-    return fetch_data(URI["pests_linked_to_gradings"])
+    return api.fetch_data(URI["pests_linked_to_gradings"], auth=auth_details)
 
-def get_gradings(from_date="2019-08-04", to_date="2019-11-22", crop="Potatis", pest="Bladlus"):
+def get_gradings(from_date="2019-08-04", to_date="2019-11-22", groda="Potatis", skadegorare="Bladlus"):
     """
     Fetches grading data for a date range, crop, and pest from the API.
 
@@ -86,10 +65,10 @@ def get_gradings(from_date="2019-08-04", to_date="2019-11-22", crop="Potatis", p
         pest (str): The pest name to retrieve grading data for.
 
     Returns:
-        Optional[pd.DataFrame]: A dataframe containing grading data if successful, otherwise None.
+        data_df (json): Raw api output
     """
-    endpoint = f"{URI['gradings']}?fran={from_date}&till={to_date}&groda={crop}&skadegorare={pest}"
-    return fetch_data(endpoint)
+    endpoint = f"{URI['gradings']}?fran={from_date}&till={to_date}&groda={groda}&skadegorare={skadegorare}"
+    return api.fetch_data(endpoint, auth=auth_details)
 
 def get_update_information():
     """
@@ -98,20 +77,4 @@ def get_update_information():
     Returns:
         Optional[pd.DataFrame]: A dataframe containing update information if successful, otherwise None.
     """
-    return fetch_data(URI["update_information"])
-
-def sweref99tm_to_wgs84(df):
-    """
-    Converts coordinates from SWEREF 99 TM (EPSG:3006) to WGS 84 (EPSG:4326) and updates the dataframe.
-
-    Args:
-        df (pd.DataFrame): The input dataframe containing SWEREF 99 TM coordinate data.
-
-    Returns:
-        pd.DataFrame: The transformed dataframe with updated WGS 84 coordinates.
-    """
-    sweref99tm = 'EPSG:3006'
-    wgs84 = 'EPSG:4326'
-    transformer = Transformer.from_crs(sweref99tm, wgs84, always_xy=False)
-    df['latitud'], df['longitud'] = transformer.transform(df['latitud'].values, df['longitud'].values)
-    return df
+    return api.fetch_data(URI["update_information"], auth=auth_details)
