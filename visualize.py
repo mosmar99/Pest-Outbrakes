@@ -83,8 +83,8 @@ def lineplot_w_weather(data_gdf, moving_avg=None):
     if moving_avg == None:        
         plt.plot(data_gdf['graderingsdatum'], data_gdf['varde'], color='#d62728', label=str(pest).capitalize(), lw=1.5, zorder=1)
         plt.plot(data_gdf['graderingsdatum'], data_gdf['utvecklingsstadium'], color='#2ca02c', label=str(crop).capitalize(), lw=2, zorder=2)
-        plt.plot(data_gdf['graderingsdatum'], data_gdf['Lufttemperatur'], color='#424242', label='Lufttemperatur', lw=1.5, zorder=1)
-        plt.plot(data_gdf['graderingsdatum'], data_gdf['Nederbördsmängd'], color='#00FFFF', label='Nederbördsmängd', lw=1.5, zorder=1)
+        plt.plot(data_gdf['graderingsdatum'], data_gdf['Lufttemperatur'], color='tab:gray', label='Lufttemperatur', lw=1.5, zorder=1)
+        plt.plot(data_gdf['graderingsdatum'], data_gdf['Nederbördsmängd'], color='tab:blue', label='Nederbördsmängd', lw=1.5, zorder=1)
     elif moving_avg in window_sizes:
         window = window_sizes[moving_avg]
         data_gdf['varde_smooth'] = data_gdf['varde'].rolling(window=window, min_periods=1).mean()
@@ -99,8 +99,8 @@ def lineplot_w_weather(data_gdf, moving_avg=None):
 
         plt.plot(data_gdf['graderingsdatum'], data_gdf['varde_smooth'], color='#d62728', label=f"{str(pest).capitalize()} (Smoothed)", lw=1.5)
         plt.plot(data_gdf['graderingsdatum'], data_gdf['utvecklingsstadium_smooth'], color='#2ca02c', label=f"{str(crop).capitalize()} (Smoothed)", lw=1.5)
-        plt.plot(data_gdf['graderingsdatum'], data_gdf['Lufttemperatur_smooth'], color='#2ca02c', label=f"{'Lufttemperatur'} (Smoothed)", lw=1.5)
-        plt.plot(data_gdf['graderingsdatum'], data_gdf['Nederbördsmängd_smooth'], color='#00FFFF', label=f"{'Nederbördsmängd'} (Smoothed)", lw=1.5)
+        plt.plot(data_gdf['graderingsdatum'], data_gdf['Lufttemperatur_smooth'], color='tab:gray', label=f"{'Lufttemperatur'} (Smoothed)", lw=1.5)
+        plt.plot(data_gdf['graderingsdatum'], data_gdf['Nederbördsmängd_smooth'], color='tab:blue', label=f"{'Nederbördsmängd'} (Smoothed)", lw=1.5)
     else:
         raise ValueError("Invalid moving_avg parameter. Choose from: None, 'low', 'mid', or 'high'.")
     
