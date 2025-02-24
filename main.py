@@ -11,7 +11,7 @@ if __name__ == "__main__":
     data_json = jbv_api.get_gradings(from_date="2015-08-04", to_date="2025-02-01", groda=groda, skadegorare=skadegorare)
     print("---FETCHED JBV-DATA")
 
-    wanted_features = ['groda', 'skadegorare', 'graderingsdatum', 'utvecklingsstadium', 'varde', 'skadegorare', 'latitud', 'longitud']
+    wanted_features = ['groda', 'skadegorare', 'graderingsdatum', 'utvecklingsstadium', 'varde', 'latitud', 'longitud']
     data_df = jbv_process.feature_extraction(data_json, wanted_features) 
     print('1', data_df.shape)
     data_df = jbv_process.drop_rows_with_missing_values(data_df)
