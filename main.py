@@ -2,6 +2,7 @@ import data_processing.jbv_api as jbv_api
 import data_processing.jbv_process as jbv_process
 import data_processing.smhi_api as smhi_api
 import data_processing.smhi_processing as smhi_processing
+import data_processing.zone_processing as zone_processing
 import geopandas as gpd
 import visualize as viz
 import pandas as pd
@@ -44,6 +45,9 @@ if __name__ == "__main__":
         from_date,
         to_date)
     print('8', data_gdf.shape)
+
+    data_gdf = zone_processing.assign_growth_zone(data_gdf)
+    print('9', data_gdf.shape)
     
     most_frequent_plantation_gdf = jbv_process.get_most_frequent_plantation(data_gdf)
     padd_most_frequent_plantation_gdf = jbv_process.introduce_nan_for_large_gaps(most_frequent_plantation_gdf)

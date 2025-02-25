@@ -1,6 +1,15 @@
 import geopandas as gpd
 
 def assign_growth_zone(gdf):
+    """
+    Assign growth zone to geodata points
+
+    Args:
+        gdf (GeoDataFrame): GeoDataFrame to append zone values to.
+        
+    Returns:
+        GeoDataFrame: GeoDataFrame with zone column appended
+    """
     CRS = 'EPSG:4326'
     zones = gpd.read_file(".\\geodata\\hardiness\\zones.shp")
     zones['zone'] = zones['name']
