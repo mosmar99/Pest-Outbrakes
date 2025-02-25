@@ -1,3 +1,9 @@
+import sys
+import matplotlib
+
+if sys.platform.startswith("linux"):
+    matplotlib.use("TkAgg")  # for linux
+
 import matplotlib.pyplot as plt
 import pandas as pd
 
