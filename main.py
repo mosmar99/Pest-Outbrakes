@@ -7,79 +7,10 @@ import visualize as viz
 import pandas as pd
 import matplotlib.pyplot as plt
 
-import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import mean_squared_error, r2_score
-import statsmodels.api as sm
-
-
-def sarimax_prediction(df):
-    """
-    Tar en preprocessorad DataFrame (df) som innehåller:
-      - 'graderingsdatum': datetime-kolumn
-      - 'varde': målvariabel (skadedjursnivå)
-      - Andra variabler, t.ex. 'utvecklingsstadium'
-    Funktionen konverterar datum, sätter index, skapar lag-funktioner, delar upp datan i train och test,
-    och passar en SARIMAX-modell med exogena regressorer.
-    """
-    import numpy as np
-    
-    # 1. Se till att 'graderingsdatum' är datetime och sortera
-    df["graderingsdatum"] = pd.to_datetime(df["graderingsdatum"], errors='coerce')
-    df = df.sort_values("graderingsdatum")
-    
-    # 2. Sätt datumkolumnen som index
-    df_ts = df.set_index("graderingsdatum")
-    
-    # 3. Skapa lag-funktioner för 'varde'
-    #df_ts["lag1_varde"] = df_ts["varde"].shift(1)
-    #df_ts["lag2_varde"] = df_ts["varde"].shift(2)
-    #df_ts = df_ts.dropna(subset=["lag1_varde", "lag2_varde"])
-    
-    # 4. Dela upp i train och test baserat på datum
-    train_df = df_ts.loc[:'2017-12-31'].copy()
-    test_df  = df_ts.loc['2018-01-01':].copy()
-    
-    y_train = train_df["varde"]
-    y_test = test_df["varde"]
-    
-    # 5. Definiera exogena regressorer (t.ex. 'utvecklingsstadium' och lag-funktionerna)
-
-
-    exog_vars = ["utvecklingsstadium", "Lufttemperatur",  "Nederbördsmängd"]
-    X_train_exog = train_df[exog_vars]
-    X_test_exog = test_df[exog_vars]
-    
-    # Kontrollera att inga NaN finns kvar
-    if X_train_exog.isnull().any().any() or X_test_exog.isnull().any().any():
-        raise ValueError("Exogena variabler innehåller fortfarande NaN.")
-    
-    # 6. Passa SARIMAX-modellen (exempelparametrar, justera efter din data)
-    model = sm.tsa.statespace.SARIMAX(
-        y_train,
-        exog=X_train_exog,
-        order=(1, 1, 1),
-        seasonal_order=(1, 0, 1, 12),
-        enforce_stationarity=False,
-        enforce_invertibility=False
-    )
-    results = model.fit(disp=False)
-    
-    # 7. Förutsäg på testperioden med heltalsindex istället för datum
-    start = len(train_df)
-    end = start + len(test_df) - 1
-    pred_res = results.get_prediction(start=start, end=end, exog=X_test_exog)
-    y_pred = pred_res.predicted_mean
-    # Återassignera testets datumindex
-    y_pred.index = test_df.index
-    
-    # 8. Utvärdera modellen
-    mse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-    
-    return results, y_pred, mse, r2, test_df, y_test
 
 if __name__ == "__main__":
     groda='höstvete'
