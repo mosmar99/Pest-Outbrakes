@@ -17,7 +17,7 @@ def feature_extraction(data_df, wanted_features):
     """
 
     data_df = pd.DataFrame(data_df)
-
+    data_df = data_df.reset_index().rename(columns={'index': 'Region_id'})
     exploded_graderingstillfalleList = data_df.explode('graderingstillfalleList')
     normalized_graderingstillfalleList = pd.json_normalize(exploded_graderingstillfalleList['graderingstillfalleList'])
 

@@ -126,6 +126,8 @@ def aggregate_smhi_data(smhi_df, how='mean', rule='W-MON'):
     aggregation = {**{column: how for column in numeric},
                    'station_key': 'first'}
     smhi_df = smhi_df.resample(rule, on='DateTime (UTC)', label='left').agg(aggregation)
+    names = {column: f'{column}_{how}' for column in numeric}
+    smhi_df = smhi_df.rename(columns=names)
     return smhi_df
 
 def process_smhi_data(smhi_df, from_date, to_date, aggregaton_how=['mean'], aggregation_rule='W-MON'):

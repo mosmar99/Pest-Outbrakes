@@ -11,24 +11,24 @@ if __name__ == "__main__":
     groda='höstvete'
     skadegorare = 'Svartpricksjuka'
     from_date = '2020-01-07'
-    to_date = '2021-01-01'
+    to_date = '2024-01-01'
 
     data_json = jbv_api.get_gradings(from_date=from_date, to_date=to_date, groda=groda, skadegorare=skadegorare)
     print("---FETCHED JBV-DATA")
 
     wanted_features = ['groda', 'skadegorare', 'graderingsdatum', 'utvecklingsstadium', 'varde', 'latitud', 'longitud']
     data_df = jbv_process.feature_extraction(data_json, wanted_features) 
-    print('1', data_df.shape)
-    data_df = jbv_process.drop_rows_with_missing_values(data_df)
-    print('2', data_df.shape)
-    data_df = jbv_process.drop_duplicates(data_df)
-    print('3', data_df.shape)
-    data_df = jbv_process.clean_coordinate_format(data_df)
-    print('4', data_df.shape)
-    data_gdf = jbv_process.sweref99tm_to_wgs84(data_df)
-    print('5', data_gdf.shape)
-    data_gdf = jbv_process.remove_outside_sweden_coordinates(data_gdf)
-    print('6', data_gdf.shape)
+    # print('1', data_df.shape)
+    # data_df = jbv_process.drop_rows_with_missing_values(data_df)
+    # print('2', data_df.shape)
+    # data_df = jbv_process.drop_duplicates(data_df)
+    # print('3', data_df.shape)
+    # data_df = jbv_process.clean_coordinate_format(data_df)
+    # print('4', data_df.shape)
+    # data_gdf = jbv_process.sweref99tm_to_wgs84(data_df)
+    # print('5', data_gdf.shape)
+    # data_gdf = jbv_process.remove_outside_sweden_coordinates(data_gdf)
+    # print('6', data_gdf.shape)
     data_gdf = jbv_process.aggregate_data_for_plantations(data_gdf, time_period='W-MON')
     print('7', data_gdf.shape)
 
