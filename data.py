@@ -10,13 +10,13 @@ import matplotlib.pyplot as plt
 if __name__ == "__main__":
     groda='höstvete'
     skadegorare = 'Svartpricksjuka'
-    from_date = '2020-01-07'
-    to_date = '2021-01-01'
+    from_date = '2015-01-07'
+    to_date = '2025-01-01'
 
     data_json = jbv_api.get_gradings(from_date=from_date, to_date=to_date, groda=groda, skadegorare=skadegorare)
     print("---FETCHED JBV-DATA")
 
-    wanted_features = ['groda', 'skadegorare', 'graderingsdatum', 'utvecklingsstadium', 'varde', 'latitud', 'longitud']
+    wanted_features = ['delomrade', 'ekologisk', 'forforfrukt', 'forfrukt', 'jordart', 'groda', 'lan', 'skadegorare', 'plojt', 'graderingsdatum', 'utvecklingsstadium', 'varde', 'latitud', 'longitud', 'skordear', 'broddbehandling']
     data_df = jbv_process.feature_extraction(data_json, wanted_features) 
     print('1', data_df.shape)
     data_df = jbv_process.drop_rows_with_missing_values(data_df)
@@ -44,7 +44,9 @@ if __name__ == "__main__":
         from_date,
         to_date)
     print('8', data_gdf.shape)
-    
+
+    data_gdf.to_csv('data.csv', index=False)
+
     most_frequent_plantation_gdf = jbv_process.get_most_frequent_plantation(data_gdf)
     padd_most_frequent_plantation_gdf = jbv_process.introduce_nan_for_large_gaps(most_frequent_plantation_gdf)
     viz.lineplot(padd_most_frequent_plantation_gdf)
