@@ -111,13 +111,13 @@ def filter_station_data_on_date(smhi_df, from_date, to_date):
     smhi_df = smhi_df[from_mask]
     return smhi_df
 
-def aggregate_smhi_data(smhi_df, how='mean', rule='W-MON'):
+def aggregate_smhi_data(smhi_df, how='mean', time_period='W-SUN'):
     """
     Data aggregation on datetime for smhi station data dataframe
 
     Args:
         smhi_df (DataFrame): Smhi Station data df.
-        rule (String): Aggregation rule, uses pandas aggregation rules
+        time_period (String): Aggregation rule, uses pandas aggregation rules
         
     Returns:
         DataFrame: DataFrame with SMHI weather data aggregated on datetime.
@@ -125,10 +125,17 @@ def aggregate_smhi_data(smhi_df, how='mean', rule='W-MON'):
     numeric = smhi_df.select_dtypes(include=['float64', 'int64']).columns
     aggregation = {**{column: how for column in numeric},
                    'station_key': 'first'}
-    smhi_df = smhi_df.resample(rule, on='DateTime (UTC)', label='left').agg(aggregation)
+    
+    smhi_df['time_period'] = smhi_df['DateTime (UTC)'].dt.to_period(time_period)
+    smhi_df = smhi_df.groupby('time_period').agg(aggregation).reset_index()
+    smhi_df['DateTime (UTC)'] = smhi_df['time_period'].dt.start_time
+    smhi_df = smhi_df.drop('time_period', axis=1)
+
+    names = {column: f'{column}_{how}' for column in numeric}
+    smhi_df = smhi_df.rename(columns=names)
     return smhi_df
 
-def process_smhi_data(smhi_df, from_date, to_date, aggregaton_how=['mean'], aggregation_rule='W-MON'):
+def process_smhi_data(smhi_df, from_date, to_date, aggregaton_how=['mean'], aggregation_rule='W-SUN'):
     """
     All in one Station data pre-processing, 
 
@@ -168,7 +175,7 @@ def find_closest_stations(gdf, smhi_stations_gdf):
     gdf["station_key"] = nearest_gdf["key"]
     return gdf.to_crs("EPSG:4326"), pd.unique(nearest_gdf["key"])
 
-def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_date, to_date, aggregation_rule='W-MON'):
+def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_date, to_date, aggregation_rule='W-SUN'):
     """
     Standard function for gathering closest weather data into a gdf
 
@@ -201,7 +208,7 @@ def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_da
                             left_on=['graderingsdatum', 'station_key'],
                             right_on=['DateTime (UTC)', 'station_key'])
 
-        gdf = gdf.drop('station_key', axis=1)
+        gdf = gdf.drop(['station_key', 'DateTime (UTC)'], axis=1)
 
     return gdf
 

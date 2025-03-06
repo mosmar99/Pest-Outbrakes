@@ -11,7 +11,7 @@ if __name__ == "__main__":
     groda='höstvete'
     skadegorare = 'Svartpricksjuka'
     from_date = '2020-01-07'
-    to_date = '2021-01-01'
+    to_date = '2024-01-01'
 
     data_json = jbv_api.get_gradings(from_date=from_date, to_date=to_date, groda=groda, skadegorare=skadegorare)
     print("---FETCHED JBV-DATA")
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     print('5', data_gdf.shape)
     data_gdf = jbv_process.remove_outside_sweden_coordinates(data_gdf)
     print('6', data_gdf.shape)
-    data_gdf = jbv_process.aggregate_data_for_plantations(data_gdf, time_period='W-MON')
+    data_gdf = jbv_process.aggregate_data_for_plantations(data_gdf)
     print('7', data_gdf.shape)
 
     param_id = "2"

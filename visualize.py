@@ -80,7 +80,7 @@ def lineplot_w_weather(data_gdf, moving_avg=None):
 
     crop = data_gdf['groda'].iloc[0]
     pest = data_gdf['skadegorare'].iloc[0]
-    temp = data_gdf['Lufttemperatur'].iloc[0]
+    temp = data_gdf['Lufttemperatur_mean'].iloc[0]
     coordinate = data_gdf['geometry'].iloc[0]
     longitude, latitude = coordinate.x, coordinate.y
 
@@ -89,19 +89,19 @@ def lineplot_w_weather(data_gdf, moving_avg=None):
     if moving_avg == None:        
         plt.plot(data_gdf['graderingsdatum'], data_gdf['varde'], color='#d62728', label=str(pest).capitalize(), lw=1.5, zorder=1)
         plt.plot(data_gdf['graderingsdatum'], data_gdf['utvecklingsstadium'], color='#2ca02c', label=str(crop).capitalize(), lw=2, zorder=2)
-        plt.plot(data_gdf['graderingsdatum'], data_gdf['Lufttemperatur'], color='tab:gray', label='Lufttemperatur', lw=1.5, zorder=1)
-        plt.plot(data_gdf['graderingsdatum'], data_gdf['Nederbördsmängd'], color='tab:blue', label='Nederbördsmängd', lw=1.5, zorder=1)
+        plt.plot(data_gdf['graderingsdatum'], data_gdf['Lufttemperatur_mean'], color='tab:gray', label='Lufttemperatur', lw=1.5, zorder=1)
+        plt.plot(data_gdf['graderingsdatum'], data_gdf['Nederbördsmängd_sum'], color='tab:blue', label='Nederbördsmängd', lw=1.5, zorder=1)
     elif moving_avg in window_sizes:
         window = window_sizes[moving_avg]
         data_gdf['varde_smooth'] = data_gdf['varde'].rolling(window=window, min_periods=1).mean()
         data_gdf['utvecklingsstadium_smooth'] = data_gdf['utvecklingsstadium'].rolling(window=window, min_periods=1).mean()
-        data_gdf['Lufttemperatur_smooth'] = data_gdf['Lufttemperatur'].rolling(window=window, min_periods=1).mean()
-        data_gdf['Nederbördsmängd_smooth'] = data_gdf['Nederbördsmängd'].rolling(window=window, min_periods=1).mean()
+        data_gdf['Lufttemperatur_smooth'] = data_gdf['Lufttemperatur_mean'].rolling(window=window, min_periods=1).mean()
+        data_gdf['Nederbördsmängd_smooth'] = data_gdf['Nederbördsmängd_sum'].rolling(window=window, min_periods=1).mean()
 
         data_gdf.loc[data_gdf['varde'].isna(), 'varde_smooth'] = None
         data_gdf.loc[data_gdf['utvecklingsstadium'].isna(), 'utvecklingsstadium_smooth'] = None
-        data_gdf.loc[data_gdf['Lufttemperatur'].isna(), 'Lufttemperatur_smooth'] = None    
-        data_gdf.loc[data_gdf['Nederbördsmängd'].isna(), 'Nederbördsmängd_smooth'] = None   
+        data_gdf.loc[data_gdf['Lufttemperatur_mean'].isna(), 'Lufttemperatur_smooth'] = None    
+        data_gdf.loc[data_gdf['Nederbördsmängd_sum'].isna(), 'Nederbördsmängd_smooth'] = None   
 
         plt.plot(data_gdf['graderingsdatum'], data_gdf['varde_smooth'], color='#d62728', label=f"{str(pest).capitalize()} (Smoothed)", lw=1.5)
         plt.plot(data_gdf['graderingsdatum'], data_gdf['utvecklingsstadium_smooth'], color='#2ca02c', label=f"{str(crop).capitalize()} (Smoothed)", lw=1.5)
