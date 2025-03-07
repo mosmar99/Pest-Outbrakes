@@ -293,7 +293,7 @@ def get_plantation_by_coordinates(data_gdf, point):
     filtered_rows_gdf = data_gdf[(data_gdf['latitud'] == latitud) & (data_gdf['longitud'] == longitud)]
     return filtered_rows_gdf
 
-def add_sensitivity(data_gdf):
+def add_sensitivity(data_gdf, fill_mode='mean'):
     winterwheat_sort_senitivities = {
         "Variety": [
             "Bright", "Brons", "Ceylon", "Etana", "Fenomen", "Festival", "Hallfreda", "Hereford", 
@@ -322,4 +322,7 @@ def add_sensitivity(data_gdf):
     variety_df_melted = pd.melt(df, id_vars=["Variety"], var_name="skadegorare", value_name="sensitivity")
     merged_data = pd.merge(data_gdf, variety_df_melted, left_on=['sort', 'skadegorare'], right_on=['Variety', 'skadegorare'], how='left')
     merged_data = merged_data.drop(columns='Variety')
+    
+    merged_data['sensitivity'] = merged_data['sensitivity'].fillna(merged_data.groupby('skadegorare')['sensitivity'].transform(fill_mode))
+    
     return merged_data
