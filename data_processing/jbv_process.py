@@ -293,7 +293,7 @@ def get_plantation_by_coordinates(data_gdf, point):
     filtered_rows_gdf = data_gdf[(data_gdf['latitud'] == latitud) & (data_gdf['longitud'] == longitud)]
     return filtered_rows_gdf
 
-def add_sensitivity(data_gdf, fill_mode='mean'):
+def add_sensitivity(data_gdf, fill_na=None):
     winterwheat_sort_senitivities = {
         "Variety": [
             "Bright", "Brons", "Ceylon", "Etana", "Fenomen", "Festival", "Hallfreda", "Hereford", 
@@ -323,6 +323,15 @@ def add_sensitivity(data_gdf, fill_mode='mean'):
     merged_data = pd.merge(data_gdf, variety_df_melted, left_on=['sort', 'skadegorare'], right_on=['Variety', 'skadegorare'], how='left')
     merged_data = merged_data.drop(columns='Variety')
     
-    merged_data['sensitivity'] = merged_data['sensitivity'].fillna(merged_data.groupby('skadegorare')['sensitivity'].transform(fill_mode))
+    # merged_data['sensitivity'] = merged_data['sensitivity'].fillna(merged_data.groupby('skadegorare')['sensitivity'].transform(fill_mode))
+    if fill_na is not None:
+        filled_dfs = []
+        for skadegorare, group in merged_data.groupby('skadegorare'):
+            if skadegorare not in df.columns:
+                filled_dfs.append(group)
+                continue
+            group = group.fillna(df[skadegorare].agg(fill_na))
+            filled_dfs.append(group)
+        merged_data = pd.concat(filled_dfs).reset_index(drop=True)
     
     return merged_data
