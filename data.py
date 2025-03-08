@@ -39,14 +39,13 @@ if __name__ == '__main__':
     data_df = jbv_process.drop_duplicates(data_df)
     print('DROPPED DUPLICATES AND NAN:', data_df.shape)
 
-
     # Filter out uncommon and short Week Spans
     data_df = jbv_process.filter_uncommon_or_short_span(data_df)
     print('DROPPED SHORT/UNCOMMON SERIES', data_df.shape) 
 
-    # Interpolate JBV data
-    data_df = jbv_process.interpolate_jbv_data(data_df, method='linear')
-    print('JBV INTERPOLATED:', data_df.shape)
+    # # Interpolate JBV data
+    # data_df = jbv_process.interpolate_jbv_data(data_df, method='linear')
+    # print('JBV INTERPOLATED:', data_df.shape)
 
     # Clean and convert coordinates
     data_df = jbv_process.clean_coordinate_format(data_df)
@@ -54,37 +53,39 @@ if __name__ == '__main__':
     data_gdf = jbv_process.remove_outside_sweden_coordinates(data_gdf)
     print('COORDS CLEANED:', data_gdf.shape)
 
-    # Get SMHI Data
-    TEMP = '2'
-    RAIN = '5'
-    SUN = '10'
-    DEWPOINT = '39'
-    HUMIDITY = '6'
-    AIR_PREASSUE = '9'
-    LONG_WAVE_IRR = '24'
-    # WIND_SPEED = '4'
-    
-    params = [(TEMP, 'mean'),
-              (RAIN, 'sum'),
-              (SUN, 'sum'),
-              (DEWPOINT, 'mean'),
-              (HUMIDITY, 'mean'),
-              (AIR_PREASSUE, 'mean'),
-              (LONG_WAVE_IRR, 'mean')]
+    data_gdf.to_csv('output.csv', index=False)
 
-    data_gdf = smhi_processing.gather_weather_data(
-        data_gdf,
-        params,
-        smhi_api.get_stations_on_parameter_id,
-        smhi_api.get_station_data_on_key_param,
-        from_date,
-        to_date,
-        aggregation_rule='D')
+    # # Get SMHI Data
+    # TEMP = '2'
+    # RAIN = '5'
+    # SUN = '10'
+    # DEWPOINT = '39'
+    # HUMIDITY = '6'
+    # AIR_PREASSUE = '9'
+    # LONG_WAVE_IRR = '24'
+    # # WIND_SPEED = '4'
     
-    print('SMHI GATHERED:', data_gdf.shape)
+    # params = [(TEMP, 'mean'),
+    #           (RAIN, 'sum'),
+    #           (SUN, 'sum'),
+    #           (DEWPOINT, 'mean'),
+    #           (HUMIDITY, 'mean'),
+    #           (AIR_PREASSUE, 'mean'),
+    #           (LONG_WAVE_IRR, 'mean')]
 
-    # Save as pickle
-    data_gdf.to_pickle("test_out.pkl")
+    # data_gdf = smhi_processing.gather_weather_data(
+    #     data_gdf,
+    #     params,
+    #     smhi_api.get_stations_on_parameter_id,
+    #     smhi_api.get_station_data_on_key_param,
+    #     from_date,
+    #     to_date,
+    #     aggregation_rule='D')
+    
+    # print('SMHI GATHERED:', data_gdf.shape)
+
+    # # Save as pickle
+    # data_gdf.to_pickle("test_out.pkl")
 
     # Save data as test_out.pkl
     # can be read as follows
