@@ -114,6 +114,7 @@ def aggregate_data_for_plantations(data_gdf, time_period='W-SUN'):
         'varde': 'mean',
         'utvecklingsstadium': 'mean',
         'groda': 'first',
+        'sort': 'first',
     }
     aggregated_df = data_gdf.groupby(['time_period', 'geometry']).agg(agg_dict).reset_index()
 
@@ -291,3 +292,46 @@ def get_plantation_by_coordinates(data_gdf, point):
     
     filtered_rows_gdf = data_gdf[(data_gdf['latitud'] == latitud) & (data_gdf['longitud'] == longitud)]
     return filtered_rows_gdf
+
+def add_sensitivity(data_gdf, fill_na=None):
+    winterwheat_sort_senitivities = {
+        "Variety": [
+            "Bright", "Brons", "Ceylon", "Etana", "Fenomen", "Festival", "Hallfreda", "Hereford", 
+            "Informer", "Jonas", "Julius", "Kalmar", "Kask", "KWS Ahoi", "KWS Kerrin", "Lini", 
+            "Linus", "Lykke", "Majken", "Marly", "Norin", "Praktik", "Prinz", "Pondus", "RGT Reform", 
+            "RGT Stokes", "SU Joran", "Terence", "Valhal"
+        ],
+        "Brunrost": [
+            4, 6, 4, 5, 4, 7, 6, 7, 4, 5, 5, 4, 4, 5, 4, 5, 4, 4, 7, 3, 4, 4, 4, 5, 4, 5, 4, 4, 4
+        ],
+        "Gulrost": [
+            2, 3, 3, 3, 2, 3, 2, 4, 1, 5, 7, 8, 4, 6, 6, 2, 6, 4, 3, 3, 3, 3, 2, 1, 6, 4, 3, 2, 3
+        ],
+        "Mjöldagg": [
+            3, 4, 4, 5, 3, 3, 3, 4, 2, 4, 5, 5, 3, 4, 3, 4, 4, 3, 4, 4, 4, 4, 3, 4, 5, 4, 4, 3, 4
+        ],
+        "Svartpricksjuka": [
+            4, 5, 6, 7, 3, 4, 6, 6, 3, 5, 4, 4, 4, 5, 5, 5, 4, 5, 5, 6, 7, 7, 4, 2, 5, 4, 5, 5, 4
+        ],
+        "Vetets bladfläcksjuka": [
+            5, 5, 5, 5, 5, 4, 5, 5, 4, 5, 5, 5, 5, 5, 5,np.nan,5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+        ]
+    }
+
+    df = pd.DataFrame(winterwheat_sort_senitivities)
+    variety_df_melted = pd.melt(df, id_vars=["Variety"], var_name="skadegorare", value_name="sensitivity")
+    merged_data = pd.merge(data_gdf, variety_df_melted, left_on=['sort', 'skadegorare'], right_on=['Variety', 'skadegorare'], how='left')
+    merged_data = merged_data.drop(columns='Variety')
+    
+    # merged_data['sensitivity'] = merged_data['sensitivity'].fillna(merged_data.groupby('skadegorare')['sensitivity'].transform(fill_mode))
+    if fill_na is not None:
+        filled_dfs = []
+        for skadegorare, group in merged_data.groupby('skadegorare'):
+            if skadegorare not in df.columns:
+                filled_dfs.append(group)
+                continue
+            group = group.fillna(df[skadegorare].agg(fill_na))
+            filled_dfs.append(group)
+        merged_data = pd.concat(filled_dfs).reset_index(drop=True)
+    
+    return merged_data

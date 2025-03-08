@@ -16,7 +16,7 @@ if __name__ == "__main__":
     data_json = jbv_api.get_gradings(from_date=from_date, to_date=to_date, groda=groda, skadegorare=skadegorare)
     print("---FETCHED JBV-DATA")
 
-    wanted_features = ['groda', 'skadegorare', 'graderingsdatum', 'utvecklingsstadium', 'varde', 'latitud', 'longitud']
+    wanted_features = ['groda', 'skadegorare', 'graderingsdatum', 'utvecklingsstadium', 'varde', 'latitud', 'longitud', 'sort']
     data_df = jbv_process.feature_extraction(data_json, wanted_features) 
     print('1', data_df.shape)
     data_df = jbv_process.drop_rows_with_missing_values(data_df)
@@ -31,6 +31,9 @@ if __name__ == "__main__":
     print('6', data_gdf.shape)
     data_gdf = jbv_process.aggregate_data_for_plantations(data_gdf)
     print('7', data_gdf.shape)
+    data_gdf = jbv_process.add_sensitivity(data_gdf)
+    print('8', data_gdf.shape)
+    print(data_gdf)
 
     param_id = "2"
     param_id_2 = "5"
@@ -43,7 +46,7 @@ if __name__ == "__main__":
         smhi_api.get_station_data_on_key_param,
         from_date,
         to_date)
-    print('8', data_gdf.shape)
+    print('9', data_gdf.shape)
     
     most_frequent_plantation_gdf = jbv_process.get_most_frequent_plantation(data_gdf)
     padd_most_frequent_plantation_gdf = jbv_process.introduce_nan_for_large_gaps(most_frequent_plantation_gdf)
