@@ -214,8 +214,7 @@ def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_da
         
         weather_data_df = pd.concat(weather_data, axis=0).rename(columns={'DateTime (UTC)': 'graderingsdatum'})
         gdf = pd.merge(gdf, weather_data_df, on=['graderingsdatum', 'geometry'], how='left')
-        print(gdf)
-        print(gdf[gdf.isna().any(axis=1)])
+        print('GOT SMHI PARAMETER:', param_name)
     return gdf.to_crs("EPSG:4326")
 
 if __name__ == "__main__":

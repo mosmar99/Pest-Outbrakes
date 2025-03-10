@@ -68,7 +68,7 @@ if __name__ == '__main__':
     data_gdf = jbv_process.remove_outside_sweden_coordinates(data_gdf)
     print('COORDS CLEANED:', data_gdf.shape)
 
-    print(data_gdf.head(20))
+    # print(data_gdf.head(20))
     data_gdf = data_gdf.dropna()
 
     # Get SMHI Data
@@ -81,10 +81,10 @@ if __name__ == '__main__':
     LONG_WAVE_IRR = '24'
     WIND_SPEED = '4'
 
-    params = [(TEMP, 'mean'), #(TEMP, 'mean')
+    params = [(TEMP, 'min'),
+              (TEMP, 'max'),
               (RAIN, 'sum'),
               (RAIN, 'max'),
-              (RAIN, 'min'),
               (SUN, 'sum'),
               (DEWPOINT, 'mean'),
               (HUMIDITY, 'mean'),
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     print('SMHI GATHERED:', data_gdf.shape)
 
     # Save as pickle
-    data_gdf.to_pickle("test_out_weekly3.pkl")
+    data_gdf.to_pickle("test_out.pkl")
 
     # Save data as test_out.pkl
     # can be read as follows
@@ -110,8 +110,3 @@ if __name__ == '__main__':
     # data_df = pd.read_pickle("test_out.pkl")
     # data_gdf = gpd.GeoDataFrame(data_df)
     # print(data_gdf.columns)
-
-    print(data_gdf[data_gdf['Series_id'] == 22])
-    print(data_gdf.shape)
-    data_gdf = data_gdf.dropna()
-    print(data_gdf.shape)
