@@ -45,7 +45,8 @@ if __name__ == "__main__":
         smhi_api.get_stations_on_parameter_id,
         smhi_api.get_station_data_on_key_param,
         from_date,
-        to_date)
+        to_date,
+        weekly=True)
     print('9', data_gdf.shape)
     
     most_frequent_plantation_gdf = jbv_process.get_most_frequent_plantation(data_gdf)
