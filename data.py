@@ -19,18 +19,21 @@ if __name__ == '__main__':
     data_json = jbv_api.get_gradings(from_date=from_date, to_date=to_date, groda=groda, skadegorare=skadegorare)
     print("---FETCHED JBV-DATA")
 
-    wanted_features = ['ekologisk', 'groda', 'skadegorare', 'graderingsdatum', 'utvecklingsstadium', 'varde', 'latitud', 'longitud', 'Series_id']
+    wanted_features = ['ekologisk', 'groda', 'skadegorare', 'graderingsdatum', 'utvecklingsstadium', 'varde', 'latitud', 'longitud', 'Series_id', 'sort', 'forfrukt', 'matmetod']
     data_df = jbv_process.feature_extraction(data_json, wanted_features) 
     print('JBV FEATURES:', data_df.shape)
 
+    data_df = data_df[data_df['matmetod'] == '% ang blad 1–3']
     agg_dict = {'ekologisk': 'first',
                 'groda': 'first',
                 'skadegorare': 'first',
                 'utvecklingsstadium': 'mean',
-                'varde': 'mean',
+                'varde': 'first',
                 'latitud': 'first',
-                'longitud': 'first'}
-
+                'longitud': 'first',
+                'sort': 'first',
+                'forfrukt': 'first'}
+    
     data_df = data_df.groupby(['Series_id', 'graderingsdatum']).agg(agg_dict).reset_index()
 
     # Aggregate JBV data
@@ -65,6 +68,7 @@ if __name__ == '__main__':
     data_gdf = jbv_process.remove_outside_sweden_coordinates(data_gdf)
     print('COORDS CLEANED:', data_gdf.shape)
 
+    print(data_gdf.head(20))
     data_gdf = data_gdf.dropna()
 
     # Get SMHI Data
@@ -79,8 +83,12 @@ if __name__ == '__main__':
 
     params = [(TEMP, 'mean'), #(TEMP, 'mean')
               (RAIN, 'sum'),
+              (RAIN, 'max'),
+              (RAIN, 'min'),
+              (SUN, 'sum'),
               (DEWPOINT, 'mean'),
-              (HUMIDITY, 'mean')]
+              (HUMIDITY, 'mean'),
+              (LONG_WAVE_IRR, 'mean')]
 
     data_gdf = smhi_processing.gather_weather_data(
         data_gdf,
@@ -94,7 +102,7 @@ if __name__ == '__main__':
     print('SMHI GATHERED:', data_gdf.shape)
 
     # Save as pickle
-    data_gdf.to_pickle("test_out_weekly.pkl")
+    data_gdf.to_pickle("test_out_weekly3.pkl")
 
     # Save data as test_out.pkl
     # can be read as follows

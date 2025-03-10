@@ -208,7 +208,7 @@ def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_da
             vals = all_station_data[stations_to_use].mean(axis=1, skipna=True).rename(param_name)
             vals = pd.concat([all_station_data['DateTime (UTC)'], vals], axis=1)
             if weekly:
-                vals = vals.rolling(window=7, center=False, on='DateTime (UTC)').mean()
+                vals = vals.rolling(window=7, center=False, on='DateTime (UTC)').agg(aggregaton_how)
             vals['geometry'] = location
             weather_data.append(vals)
         
