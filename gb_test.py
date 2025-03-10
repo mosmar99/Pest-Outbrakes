@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 # from sklearn.ensemble import HistGradientBoostingClassifier as classifier_model
 # from sklearn.neural_network import MLPRegressor as model
 from xgboost import XGBRegressor as model
-from xgboost import XGBClassifier as classifier_model
+# from xgboost import XGBClassifier as classifier_model
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, accuracy_score
 from sklearn.preprocessing import MinMaxScaler
@@ -50,7 +50,7 @@ data_gdf = data_gdf.drop(['sort', 'forfrukt', 'ekologisk'], axis=1)
 
 data_gdf['target'] = data_gdf['varde'] * (data_gdf['utvecklingsstadium_mean']/100)
 data_gdf['target2'] = data_gdf['varde'] * (data_gdf['varde_mean']/100)
-data_gdf['target3'] = ((data_gdf['varde'] - data_gdf.groupby('Series_id')['varde'].shift(1)) > 10)
+data_gdf['target3'] = data_gdf['varde'] - data_gdf.groupby('Series_id')['varde'].shift(1)
 data_gdf['target4'] = data_gdf['utvecklingsstadium']
 
 data_gdf['1w_utvecklingsstadium'] = data_gdf.groupby('Series_id')['utvecklingsstadium'].shift(1)
@@ -75,18 +75,17 @@ y3 = data_gdf['target3']
 y4 = data_gdf['target4']
 
 # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-test_mask_pre = (data_gdf['graderingsdatum'].dt.year == 2016)
-X_train_pre, X_test_pre = X[~test_mask_pre], X[test_mask_pre]
-y3_train_pre, y3_test_pre = y3[~test_mask_pre], y3[test_mask_pre]
+train_mask_pre = (data_gdf['graderingsdatum'].dt.year == 2016)
+X_train_pre, X_test_pre = X[train_mask_pre], X[~train_mask_pre]
+y3_train_pre, y3_test_pre = y3[train_mask_pre], y3[~train_mask_pre]
 
-
-ml_model3 = classifier_model()
+ml_model3 = model()
 ml_model3.fit(X_train_pre, y3_train_pre)
 
 X['t3_pred'] = pd.Series(ml_model3.predict(X), index=X.index)
 
-X_train_pre2, X_test_pre2 = X[~test_mask_pre], X[test_mask_pre]
-y4_train_pre, y4_test_pre = y4[~test_mask_pre], y4[test_mask_pre]
+X_train_pre2, X_test_pre2 = X[train_mask_pre], X[~train_mask_pre]
+y4_train_pre, y4_test_pre = y4[train_mask_pre], y4[~train_mask_pre]
 
 ml_model4 = model()
 ml_model4.fit(X_train_pre2, y4_train_pre)
@@ -96,8 +95,8 @@ X['utv_pred'] = pd.Series(ml_model4.predict(X), index=X.index)
 
 print(X.columns)
 test_mask = data_gdf['graderingsdatum'].dt.year == 2023
-train_mask = ~(test_mask_pre & test_mask)
-
+train_mask = ~(train_mask_pre | test_mask)
+print('training on:', sum(train_mask)/len(train_mask))
 print(sum(test_mask)/len(test_mask))
 X_train, X_test = X[train_mask], X[test_mask]
 y_train, y_test = y[train_mask], y[test_mask]
@@ -119,7 +118,7 @@ y_pred = y_pred / (data_gdf['utvecklingsstadium_mean'].reindex_like(y_pred)/100)
 y2_pred = y2_pred / (data_gdf['varde_mean'].reindex_like(y2_pred)/100)
 
 y_pred = pd.concat([y_pred, y2_pred],axis=1).mean(axis=1)
-# y_pred = y2_pred
+# y_pred = y_pred
 y_test = y_test / (data_gdf['utvecklingsstadium_mean'].reindex_like(y_pred)/100)
 
 # data_gdf['target'] = data_gdf['varde'] - pd.merge(data_gdf['week'], mean_varde, how='left', on='week')['varde']
@@ -165,5 +164,5 @@ plt.show()
 
 print( 'TEST:  MAE:',mean_absolute_error(y_test, y_pred), 'MSE:', mean_squared_error(y_test, y_pred), 'R2:', r2_score(y_test, y_pred))
 print( 'UTV Pred:  MAE:',mean_absolute_error(y4_test_pre, y4_pred), 'MSE:', mean_squared_error(y4_test_pre, y4_pred), 'R2:', r2_score(y4_test_pre, y4_pred))
-
-print( 'TEST:  Acuracy:',accuracy_score(y3_test_pre, y3_pred))
+print( 'grad varde Pred:  MAE:',mean_absolute_error(y3_test_pre, y3_pred), 'MSE:', mean_squared_error(y3_test_pre, y3_pred), 'R2:', r2_score(y3_test_pre, y3_pred))
+# print( 'TEST:  Acuracy:',accuracy_score(y3_test_pre, y3_pred))
