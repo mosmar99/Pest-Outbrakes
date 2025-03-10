@@ -1,0 +1,25 @@
+
+data_module:
+  seq_len: 5
+  batch_size: 32
+  num_workers: 0
+  val_split: 0.15
+  val_geo_frac: 0.15
+  test_geo_frac: 0.15
+  split_by_geo: true
+  scale_features: true
+
+model:
+  type: "LSTMRegressor"
+  hidden_dim: 32
+  num_layers: 2
+  lr: 0.001
+  dropout: 0.3
+  weight_decay: 0.0005
+
+trainer:
+  max_epochs: 100
+  accelerator: "gpu"
+  devices: 1
+  callbacks:
+    - "PrintSampleCallback"
