@@ -10,12 +10,28 @@ data_module:
   scale_features: true
 
 model:
-  type: "LSTMRegressor"
-  hidden_dim: 32
-  num_layers: 2
-  lr: 0.001
-  dropout: 0.3
-  weight_decay: 0.0005
+  type: "CNNRegressor" # choose model type here
+
+  # fnnregressor params
+  FNNRegressor:
+    input_multiple: 5 # make sure this matches with datamodule seq_len
+    hidden_dim: [128, 64, 32]
+    learning_rate: 0.001
+    weight_decay: 0.0005
+
+  # lstmregressor params
+  LSTMRegressor:
+    hidden_dim: 32
+    num_layers: 2
+    lr: 0.001
+    dropout: 0.3
+    weight_decay: 0.0005
+
+  # cnnregressor params
+  CNNRegressor:
+    seq_len: 5 # make sure this matches with datamodule seq_len
+    learning_rate: 0.001
+    weight_decay: 0.0005
 
 trainer:
   max_epochs: 100

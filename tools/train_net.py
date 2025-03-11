@@ -6,13 +6,19 @@ import pandas as pd
 
 from jbv_models.data.datamodule import AgricultureDataModule
 from jbv_models.lstm.model import LSTMRegressor
+from jbv_models.fnn.model import FNNRegressor
+from jbv_models.cnn.model import CNNRegressor
 from tools.callbacks import PrintSampleCallback
 
 def get_model_class(model_type: str):
     """Helper to map a model 'type' string to an actual model class."""
     if model_type == "LSTMRegressor":
         return LSTMRegressor
-    # add more
+    elif model_type == "FNNRegressor":
+        return FNNRegressor
+    elif model_type == "CNNRegressor":
+        return CNNRegressor
+    
     raise ValueError(f"Unknown model type: {model_type}")
 
 def do_train(df, config_path="configs/config.yaml"):
@@ -41,11 +47,11 @@ def do_train(df, config_path="configs/config.yaml"):
         **data_module_cfg
     )
 
-    model_cfg = config["model"]
-    model_type = model_cfg.pop("type")
+    model_type = config["model"]["type"]
+    model_cfg = config["model"].get(model_type, {})
     model_cls = get_model_class(model_type)
     model = model_cls(
-        input_dim=len(feature_cols),
+        input_size=len(feature_cols),
         **model_cfg
     )
 

@@ -20,7 +20,7 @@ if __name__ == "__main__":
     data_json = jbv_api.get_gradings(from_date=from_date, to_date=to_date, groda=groda, skadegorare=skadegorare)
     print("---FETCHED JBV-DATA")
 
-    wanted_features = ['groda', 'skadegorare', 'graderingsdatum', 'matmetod', 'utvecklingsstadium', 'varde', 'latitud', 'longitud', 'sadatum', 'utplaceringsdatumFalla']
+    wanted_features = ['groda', 'sort', 'skadegorare', 'graderingsdatum', 'matmetod', 'utvecklingsstadium', 'varde', 'latitud', 'longitud', 'sadatum', 'utplaceringsdatumFalla']
     data_df = jbv_process.feature_extraction(data_json, wanted_features)
     #data_df['varde'] = data_df['varde'] * data_df['utvecklingsstadium']
     print('1', data_df.shape)
@@ -53,33 +53,25 @@ if __name__ == "__main__":
         to_date,
         weekly=True)
     print('9', data_gdf.shape)
-    
-    most_frequent_plantation_gdf = jbv_process.get_most_frequent_plantation(data_gdf)
-    padd_most_frequent_plantation_gdf = jbv_process.introduce_nan_for_large_gaps(most_frequent_plantation_gdf)
-    viz.lineplot(padd_most_frequent_plantation_gdf)
-    viz.lineplot_w_weather(padd_most_frequent_plantation_gdf)
-        to_date)
-    print('8', data_gdf.shape)
-    print(data_gdf)
 
     #most_frequent_plantation_gdf = jbv_process.get_most_frequent_plantation(data_gdf)
-    padd_most_frequent_plantation_gdf = jbv_process.introduce_nan_for_large_gaps(data_gdf)
+    #padd_most_frequent_plantation_gdf = jbv_process.introduce_nan_for_large_gaps(data_gdf)
     #viz.lineplot(padd_most_frequent_plantation_gdf)
     #viz.lineplot_w_weather(padd_most_frequent_plantation_gdf)
     
     # feature engineering below
-    new_df = F.days_since_sowing(padd_most_frequent_plantation_gdf)
-    new_df = F.days_since_last_measurement(new_df)
+    #new_df = F.days_since_sowing(data_gdf)
+    new_df = F.days_since_last_measurement(data_gdf)
     #new_df = F.days_since_last_rain(new_df)
-    enw_df = F.days_since_trap_placement(new_df)
+    #enw_df = F.days_since_trap_placement(new_df)
     new_df = F.utvecklingsstadium_progression(new_df)
     new_df = F.varde_progression(new_df)
     df = F.add_month_week_day(new_df)
     print(df.shape)
     print(df)
     print(df.columns.values.tolist())
-    #df.to_csv("enh_data.csv")
-    #df = pd.read_csv("enh_data.csv")
+    df.to_csv("enh_data.csv")
+    df = pd.read_csv("enh_data.csv")
     
     # data cleaning and preparation
     print("Missing values per column:")
@@ -87,7 +79,7 @@ if __name__ == "__main__":
 
     # data cleaning
     #df = df.drop(columns=['Unnamed: 0','sadatum', 'varde_progression', 'utplaceringsdatumFalla']) use when reading csv dataframe
-    df = df.drop(columns=['sadatum', 'varde_progression', 'utplaceringsdatumFalla'])
+    df = df.drop(columns=['varde_progression'])
     print("Missing values per column:")
     print(df.isnull().sum())
 

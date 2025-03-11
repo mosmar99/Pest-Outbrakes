@@ -19,7 +19,7 @@ class LSTMRegressor(pl.LightningModule):
     LSTMRegressor model with an attention mechanism for sequence regression tasks.
 
     Args:
-        input_dim (int): Number of features per time step in the input sequence.
+        input_size (int): Number of features per time step in the input sequence.
         hidden_dim (int, optional): Number of hidden units in the LSTM layers. Defaults to 32.
         num_layers (int, optional): Number of stacked LSTM layers. Defaults to 2.
         bidirectional (bool, optional): If True, uses a bidirectional LSTM. Defaults to True.
@@ -32,13 +32,13 @@ class LSTMRegressor(pl.LightningModule):
         torch.Tensor: A tensor containing the regression predictions for each input sample,
                       with the output dimension squeezed (i.e., shape [batch_size]).
     """
-    def __init__(self, input_dim, hidden_dim=32, num_layers=2, bidirectional=True,
+    def __init__(self, input_size, hidden_dim=32, num_layers=2, bidirectional=True,
                  lr=1e-3, dropout=0.3, weight_decay=5e-4, fc_hidden_dim=64):
         super(LSTMRegressor, self).__init__()
         self.save_hyperparameters()
         
         self.lstm = nn.LSTM(
-            input_dim, hidden_dim, num_layers=num_layers,
+            input_size, hidden_dim, num_layers=num_layers,
             batch_first=True, dropout=dropout, bidirectional=bidirectional
         )
         lstm_output_dim = hidden_dim * 2 if bidirectional else hidden_dim
