@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import geopandas as gpd
 
@@ -109,15 +110,19 @@ def filter_station_data_on_date(smhi_df, from_date, to_date):
     """
     from_mask = (smhi_df["DateTime (UTC)"] > pd.to_datetime(from_date)) & (smhi_df["DateTime (UTC)"] < pd.to_datetime(to_date))
     smhi_df = smhi_df[from_mask]
+
+    numeric = smhi_df.select_dtypes(include=['float64', 'int64']).columns
+    
+
     return smhi_df
 
-def aggregate_smhi_data(smhi_df, how='mean', rule='W-MON'):
+def aggregate_smhi_data(smhi_df, how='mean'):
     """
     Data aggregation on datetime for smhi station data dataframe
 
     Args:
         smhi_df (DataFrame): Smhi Station data df.
-        rule (String): Aggregation rule, uses pandas aggregation rules
+        time_period (String): Aggregation rule, uses pandas aggregation rules
         
     Returns:
         DataFrame: DataFrame with SMHI weather data aggregated on datetime.
@@ -125,10 +130,17 @@ def aggregate_smhi_data(smhi_df, how='mean', rule='W-MON'):
     numeric = smhi_df.select_dtypes(include=['float64', 'int64']).columns
     aggregation = {**{column: how for column in numeric},
                    'station_key': 'first'}
-    smhi_df = smhi_df.resample(rule, on='DateTime (UTC)', label='left').agg(aggregation)
+    
+    smhi_df['time_period'] = smhi_df['DateTime (UTC)'].dt.to_period('D')
+    smhi_df = smhi_df.groupby('time_period').agg(aggregation).reset_index()
+    smhi_df['DateTime (UTC)'] = smhi_df['time_period'].dt.start_time
+    smhi_df = smhi_df.drop('time_period', axis=1)
+
+    names = {column: f'{column}_{how}' for column in numeric}
+    smhi_df = smhi_df.rename(columns=names)
     return smhi_df
 
-def process_smhi_data(smhi_df, from_date, to_date, aggregaton_how=['mean'], aggregation_rule='W-MON'):
+def process_smhi_data(smhi_df, from_date, to_date, aggregaton_how='mean'):
     """
     All in one Station data pre-processing, 
 
@@ -142,68 +154,68 @@ def process_smhi_data(smhi_df, from_date, to_date, aggregaton_how=['mean'], aggr
     """
     smhi_df = clean_station_data(smhi_df)
     smhi_df = filter_station_data_on_date(smhi_df, from_date, to_date)
-    smhi_df = aggregate_smhi_data(smhi_df, aggregaton_how, aggregation_rule)
+    smhi_df = aggregate_smhi_data(smhi_df, aggregaton_how)
     return smhi_df
 
-def find_closest_stations(gdf, smhi_stations_gdf):
-    """
-    Finds closest stations for every row.
-
-    Args:
-        gdf (GeoDataFrame): GeoDataFrame for wich we want to find the nearest stations.
-        smhi_stations_gdf (GeoDataFrame): Data on stations with geometry.
-        
-    Returns:
-        Tuple(GeoDataFrame, List): original gdf with SMHI station key appended. List of unique nearest station keys
-    """
-    # Convert to estimated UTM CRS to achieve accuracy in distances
+def find_closest_n_stations(gdf, stations_gdf:gpd.GeoDataFrame, max_dist=50000, closest_n=4):
     utm_crs = gdf.estimate_utm_crs()
     gdf = gdf.to_crs(utm_crs)
-    smhi_stations_gdf = smhi_stations_gdf.to_crs(utm_crs)
+    stations_gdf = stations_gdf.to_crs(utm_crs)
 
-    # Perform Spatial join by nearest neighbour
-    nearest_gdf = gdf.sjoin_nearest(smhi_stations_gdf, how="left")
-    nearest_gdf = nearest_gdf[~nearest_gdf.index.duplicated(keep='first')]
+    loc_to_stations = {}
+    stations = pd.Series([], name='key')
 
-    gdf["station_key"] = nearest_gdf["key"]
-    return gdf.to_crs("EPSG:4326"), pd.unique(nearest_gdf["key"])
+    locations = gdf['geometry'].unique()
+    for location in locations:
+        # print(location)
+        distances = stations_gdf['geometry'].distance(location).rename('distance')
 
-def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_date, to_date, aggregation_rule='W-MON'):
-    """
-    Standard function for gathering closest weather data into a gdf
+        stations_gdf_dist = pd.concat([stations_gdf, distances], axis=1)
+        filtered_stations_gdf = stations_gdf_dist[stations_gdf_dist['distance'] < max_dist]
 
-    Args:
-        gdf (GeoDataFrame): GeoDataFrame for wich we want to find the nearest stations.
-        params (List(Tuple(String, String))): List of tuple with parameter id to get, and aggregation type ex. 'mean', 'sum', 'max', 'min'
-        f_get_stations (GeoDataFrame): Function for getting data on stations.
-        f_get_station_data (GeoDataFrame): Function for getting weatherdata from stations.
-        from_date (String): from date, for filtering in data.
-        to_date (String): to date, for filtering in data.
-        aggregation_rule (String): Aggregation rule, uses pandas aggregation rules
+        filtered_stations_gdf = filtered_stations_gdf.sort_values(by='distance', ascending=True)
         
-    Returns:
-        Tuple(GeoDataFrame, List): original gdf with SMHI station key appended. List of unique nearest station keys
-    """
+        loc_to_stations[location] = filtered_stations_gdf[['key', 'distance']].head(closest_n)
+        stations = pd.concat([stations, filtered_stations_gdf['key'].head(closest_n)], axis=0)
+    
+    return loc_to_stations, stations.unique(), utm_crs
+
+def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_date, to_date, weekly=False, max_dist=float('inf'), closest_n=4):
     for param_id, aggregaton_how in params:
         stations_gdf = f_get_stations(param_id)
         stations_gdf = process_stations(stations_gdf, from_date, to_date)
+        loc_to_stations, unique_stations, utm_crs = find_closest_n_stations(gdf, stations_gdf, max_dist=max_dist, closest_n=closest_n)
+        gdf = gdf.to_crs(utm_crs)
+        
+        # Gather all data for parameter
+        all_station_data = pd.date_range(start=pd.to_datetime(from_date), end=pd.to_datetime(to_date), freq='D').to_series().rename('DateTime (UTC)')
+        param_name = None
+        for key in unique_stations:
+            station_data_df = f_get_station_data(key, param_id)
+            station_data_df = process_smhi_data(station_data_df, from_date, to_date, aggregaton_how)
 
-        gdf, stations_to_get = find_closest_stations(gdf, stations_gdf)
+            numeric = station_data_df.select_dtypes(include=['float64', 'int64']).columns
+            if param_name == None:
+                param_name = numeric[0]
+            station_data_df = station_data_df.rename(columns={name: key for name in numeric})
 
-        parameter_data = pd.DataFrame()
-        for station_key in stations_to_get:
-            station_data_df = f_get_station_data(station_key, param_id)
-            station_data_df = process_smhi_data(station_data_df, from_date, to_date, aggregaton_how, aggregation_rule)
-            parameter_data = pd.concat([parameter_data, station_data_df])
+            relevant_cols = station_data_df.select_dtypes(include=['float64', 'int64', 'datetime64']).columns
+            all_station_data = pd.merge(all_station_data, station_data_df[relevant_cols], how='left', on='DateTime (UTC)')
 
-        gdf = gdf.merge(parameter_data,
-                            how='left',
-                            left_on=['graderingsdatum', 'station_key'],
-                            right_on=['DateTime (UTC)', 'station_key'])
-
-        gdf = gdf.drop('station_key', axis=1)
-
-    return gdf
+        weather_data = []
+        for location, stations in loc_to_stations.items():
+            stations_to_use = stations['key'].to_list()
+            vals = all_station_data[stations_to_use].mean(axis=1, skipna=True).rename(param_name)
+            vals = pd.concat([all_station_data['DateTime (UTC)'], vals], axis=1)
+            if weekly:
+                vals = vals.rolling(window=7, center=False, on='DateTime (UTC)').agg(aggregaton_how)
+            vals['geometry'] = location
+            weather_data.append(vals)
+        
+        weather_data_df = pd.concat(weather_data, axis=0).rename(columns={'DateTime (UTC)': 'graderingsdatum'})
+        gdf = pd.merge(gdf, weather_data_df, on=['graderingsdatum', 'geometry'], how='left')
+        print('GOT SMHI PARAMETER:', param_name)
+    return gdf.to_crs("EPSG:4326")
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt

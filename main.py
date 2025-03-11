@@ -34,8 +34,10 @@ if __name__ == "__main__":
     print('5', data_gdf.shape)
     data_gdf = jbv_process.remove_outside_sweden_coordinates(data_gdf)
     print('6', data_gdf.shape)
-    #data_gdf = jbv_process.aggregate_data_for_plantations(data_gdf, time_period='W-MON')
-    #print('7', data_gdf.shape)
+    data_gdf = jbv_process.aggregate_data_for_plantations(data_gdf)
+    print('7', data_gdf.shape)
+    data_gdf = jbv_process.add_sensitivity(data_gdf)
+    print('8', data_gdf.shape)
     print(data_gdf)
 
     param_id = "2"
@@ -48,6 +50,14 @@ if __name__ == "__main__":
         smhi_api.get_stations_on_parameter_id,
         smhi_api.get_station_data_on_key_param,
         from_date,
+        to_date,
+        weekly=True)
+    print('9', data_gdf.shape)
+    
+    most_frequent_plantation_gdf = jbv_process.get_most_frequent_plantation(data_gdf)
+    padd_most_frequent_plantation_gdf = jbv_process.introduce_nan_for_large_gaps(most_frequent_plantation_gdf)
+    viz.lineplot(padd_most_frequent_plantation_gdf)
+    viz.lineplot_w_weather(padd_most_frequent_plantation_gdf)
         to_date)
     print('8', data_gdf.shape)
     print(data_gdf)
