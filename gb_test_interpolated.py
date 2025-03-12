@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import HistGradientBoostingRegressor as model
 # from sklearn.ensemble import HistGradientBoostingClassifier as classifier_model
 # from sklearn.neural_network import MLPRegressor as model
-from xgboost import XGBRegressor as model2
+# from xgboost import XGBRegressor as model
 # from xgboost import XGBClassifier as classifier_model
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, accuracy_score
@@ -52,8 +52,8 @@ lagged_weather = {f'{days}w_{col}': data_gdf.groupby('Series_id')[col].shift(day
 lagged_weather_df = pd.DataFrame(lagged_weather)
 data_gdf = pd.concat([data_gdf, lagged_weather_df], axis=1)
 
-# data_gdf = pd.get_dummies(data_gdf, columns=['sort', 'forfrukt', 'ekologisk'], dtype='int64')
-data_gdf = data_gdf.drop(['sort', 'forfrukt', 'ekologisk'], axis=1)
+data_gdf = pd.get_dummies(data_gdf, columns=['sort', 'forfrukt', 'forforfrukt', 'ekologisk'], dtype='int64')
+# data_gdf = data_gdf.drop(['sort', 'forfrukt', 'ekologisk'], axis=1)
 
 data_gdf['target'] = data_gdf['varde'] * (data_gdf['utvecklingsstadium_mean']/100)
 data_gdf['target2'] = data_gdf['varde'] * (data_gdf['varde_mean']/100)
@@ -82,7 +82,7 @@ print('pre training on:', sum(train_mask_pre)/len(train_mask_pre))
 X_train_pre, X_test_pre = X[train_mask_pre], X[~train_mask_pre]
 y3_train_pre, y3_test_pre = y3[train_mask_pre], y3[~train_mask_pre]
 
-ml_model3 = model2()
+ml_model3 = model()
 ml_model3.fit(X_train_pre, y3_train_pre)
 
 X['t3_pred'] = pd.Series(ml_model3.predict(X), index=X.index)
@@ -90,7 +90,7 @@ X['t3_pred'] = pd.Series(ml_model3.predict(X), index=X.index)
 X_train_pre2, X_test_pre2 = X[train_mask_pre], X[~train_mask_pre]
 y4_train_pre, y4_test_pre = y4[train_mask_pre], y4[~train_mask_pre]
 
-ml_model4 = model2()
+ml_model4 = model()
 ml_model4.fit(X_train_pre2, y4_train_pre)
 
 X['utv_pred'] = pd.Series(ml_model4.predict(X), index=X.index)

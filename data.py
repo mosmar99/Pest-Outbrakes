@@ -2,28 +2,43 @@ import data_processing.jbv_api as jbv_api
 import data_processing.jbv_process as jbv_process
 import data_processing.smhi_api as smhi_api
 import data_processing.smhi_processing as smhi_processing
-
+ 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-
+ 
 pd.set_option('future.no_silent_downcasting', True)
-
+ 
 if __name__ == '__main__':
     groda='höstvete'
     skadegorare = 'Svartpricksjuka'
-    from_date = '2016-01-07' #'2016-01-07'
+    from_date = '2015-01-01' #'2016-01-07'
     to_date = '2024-01-01'
 
+    from_date2 = '2005-01-01'
+    to_date2 = '2014-12-31'
+ 
     data_json = jbv_api.get_gradings(from_date=from_date, to_date=to_date, groda=groda, skadegorare=skadegorare)
     print("---FETCHED JBV-DATA")
 
-    wanted_features = ['ekologisk', 'groda', 'skadegorare', 'graderingsdatum', 'utvecklingsstadium', 'varde', 'latitud', 'longitud', 'Series_id', 'sort', 'forfrukt', 'matmetod']
-    data_df = jbv_process.feature_extraction(data_json, wanted_features) 
-    print('JBV FEATURES:', data_df.shape)
+    data_json2 = jbv_api.get_gradings(from_date=from_date2, to_date=to_date2, groda=groda, skadegorare=skadegorare)
+    print("---FETCHED JBV-DATA 2")
+ 
+    wanted_features = ['forforfrukt', 'ekologisk', 'groda', 'skadegorare', 'graderingsdatum', 'utvecklingsstadium', 'varde', 'latitud', 'longitud', 'Series_id', 'sort', 'forfrukt', 'matmetod']
 
-    data_df = data_df[data_df['matmetod'] == '% ang blad 1–3']
+    data_df = jbv_process.feature_extraction(data_json, wanted_features)
+    print('JBV FEATURES:', data_df.shape)
+    
+    data_df2 = jbv_process.feature_extraction(data_json, wanted_features)
+    print('JBV FEATURES 2:', data_df.shape)
+
+    data_df2['Series_id'] = data_df2['Series_id'] + (data_df['Series_id'].max() + 1)
+
+    data_df = pd.concat([data_df,data_df2], axis=0)
+    print('Joined JBV Data:', data_df.shape)
+ 
+    # data_df = data_df[data_df['matmetod'] == '% ang blad 1–3']
     agg_dict = {'ekologisk': 'first',
                 'groda': 'first',
                 'skadegorare': 'first',
@@ -32,12 +47,16 @@ if __name__ == '__main__':
                 'latitud': 'first',
                 'longitud': 'first',
                 'sort': 'first',
-                'forfrukt': 'first'}
-    
+                'forfrukt': 'first',
+                'forforfrukt': 'first'}
+   
     data_df = data_df.groupby(['Series_id', 'graderingsdatum']).agg(agg_dict).reset_index()
+    print('Aggregated data:', data_df.shape)
 
+    data_df = jbv_process.add_sensitivity(data_df, fill_na='median')
+    print('Added Sensitivity:', data_df.shape)
     # Aggregate JBV data
-
+ 
     # agg_dict = {'ekologisk': 'first',
     #             'groda': 'first',
     #             'skadegorare': 'first',
@@ -45,32 +64,32 @@ if __name__ == '__main__':
     #             'varde': 'mean',
     #             'latitud': 'first',
     #             'longitud': 'first'}
-
+ 
     # data_df = jbv_process.aggregate_data_for_series(data_df, agg_dict, time_period='W-SUN')
     # print('JBV AGGREGATED:', data_df.shape)
-
+ 
     data_df = jbv_process.drop_rows_with_missing_values(data_df)
     data_df = jbv_process.drop_duplicates(data_df)
     print('DROPPED DUPLICATES AND NAN:', data_df.shape)
-
-
+ 
+ 
     # Filter out uncommon and short Week Spans
     data_df = jbv_process.filter_uncommon_or_short_span(data_df)
-    print('DROPPED SHORT/UNCOMMON SERIES', data_df.shape) 
-
+    print('DROPPED SHORT/UNCOMMON SERIES', data_df.shape)
+ 
     # Interpolate JBV data
     # data_df = jbv_process.interpolate_jbv_data(data_df, method='linear')
     # print('JBV INTERPOLATED:', data_df.shape)
-
+ 
     # Clean and convert coordinates
     data_df = jbv_process.clean_coordinate_format(data_df)
     data_gdf = jbv_process.sweref99tm_to_wgs84(data_df)
     data_gdf = jbv_process.remove_outside_sweden_coordinates(data_gdf)
     print('COORDS CLEANED:', data_gdf.shape)
-
+ 
     # print(data_gdf.head(20))
     data_gdf = data_gdf.dropna()
-
+ 
     # Get SMHI Data
     TEMP = '2'
     RAIN = '5'
@@ -80,16 +99,26 @@ if __name__ == '__main__':
     AIR_PREASSUE = '9'
     LONG_WAVE_IRR = '24'
     WIND_SPEED = '4'
-
-    params = [(TEMP, 'min'),
+ 
+    params = [(TEMP, 'mean'),
+              (TEMP, 'min'),
               (TEMP, 'max'),
               (RAIN, 'sum'),
               (RAIN, 'max'),
+              (RAIN, 'min'),
               (SUN, 'sum'),
+              (SUN, 'min'),
+              (SUN, 'max'),
               (DEWPOINT, 'mean'),
+              (DEWPOINT, 'min'),
+              (DEWPOINT, 'max'),
               (HUMIDITY, 'mean'),
-              (LONG_WAVE_IRR, 'mean')]
-
+              (HUMIDITY, 'min'),
+              (HUMIDITY, 'max'),
+              (LONG_WAVE_IRR, 'mean'),
+              (LONG_WAVE_IRR, 'min'),
+              (LONG_WAVE_IRR, 'max'),]
+ 
     data_gdf = smhi_processing.gather_weather_data(
         data_gdf,
         params,
@@ -97,16 +126,18 @@ if __name__ == '__main__':
         smhi_api.get_station_data_on_key_param,
         from_date,
         to_date,
-        weekly=True)
-    
+        weekly=True,
+        closest_n=3)
+   
     print('SMHI GATHERED:', data_gdf.shape)
-
+ 
     # Save as pickle
-    data_gdf.to_pickle("test_out.pkl")
-
+    data_gdf.to_csv('v2.csv', index=False)
+    data_gdf.to_pickle("v2.pkl")
+ 
     # Save data as test_out.pkl
     # can be read as follows
-
+ 
     # data_df = pd.read_pickle("test_out.pkl")
     # data_gdf = gpd.GeoDataFrame(data_df)
     # print(data_gdf.columns)
