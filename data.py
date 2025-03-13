@@ -112,7 +112,7 @@ if __name__ == '__main__':
     #     smhi_api.get_station_data_on_key_param,
     #     from_date,
     #     to_date,
-    #     aggregation_rule='D')
+    #     aggregation_rule='W-SUN')
     
     # print('SMHI GATHERED:', data_gdf.shape)
 
