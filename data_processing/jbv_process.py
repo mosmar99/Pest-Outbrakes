@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 import geopandas as gpd
-from shapely.geometry import Point
-from scipy.interpolate import make_interp_spline
 import pandas as pd
+
+pd.options.mode.chained_assignment = None
 
 def feature_extraction(data_df, wanted_features):
     """
@@ -292,6 +292,24 @@ def get_plantation_by_coordinates(data_gdf, point):
     
     filtered_rows_gdf = data_gdf[(data_gdf['latitud'] == latitud) & (data_gdf['longitud'] == longitud)]
     return filtered_rows_gdf
+
+def get_surrounding_varde(data_gdf, n_closest=3):
+    utm_crs = data_gdf.estimate_utm_crs()
+    data_gdf = data_gdf.to_crs(utm_crs)
+
+    result = []
+    for (Series_id, graderingsdatum), group in data_gdf.groupby(['Series_id', 'graderingsdatum']):
+        last_start = graderingsdatum - pd.DateOffset(weeks=1)
+        allowed_mask = (data_gdf['graderingsdatum'] >= last_start) & (data_gdf['graderingsdatum'] <= graderingsdatum) & (data_gdf['Series_id'] != Series_id) # 12 sec
+        allowed = data_gdf[allowed_mask]
+
+        allowed['distance'] = allowed['geometry'].distance(group['geometry'].iloc[0]).rename('distance')
+        group[f'varde_nearby_mean'] = allowed.sort_values(by=['distance']).head(n_closest)['varde'].mean()
+        group[f'varde_nearby_min'] = allowed.sort_values(by=['distance']).head(n_closest)['varde'].min()
+        group[f'varde_nearby_max'] = allowed.sort_values(by=['distance']).head(n_closest)['varde'].max()
+        result.append(group)
+    data_gdf = pd.concat(result)
+    return data_gdf
 
 def add_sensitivity(data_gdf, fill_na=None):
     winterwheat_sort_senitivities = {

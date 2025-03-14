@@ -13,32 +13,18 @@ pd.set_option('future.no_silent_downcasting', True)
 if __name__ == '__main__':
     groda='höstvete'
     skadegorare = 'Svartpricksjuka'
-    from_date = '2015-01-01' #'2016-01-07'
+    from_date = '2020-01-01' #'2016-01-07'
     to_date = '2024-01-01'
-
-    from_date2 = '2005-01-01'
-    to_date2 = '2014-12-31'
  
     data_json = jbv_api.get_gradings(from_date=from_date, to_date=to_date, groda=groda, skadegorare=skadegorare)
     print("---FETCHED JBV-DATA")
 
-    data_json2 = jbv_api.get_gradings(from_date=from_date2, to_date=to_date2, groda=groda, skadegorare=skadegorare)
-    print("---FETCHED JBV-DATA 2")
- 
     wanted_features = ['forforfrukt', 'ekologisk', 'groda', 'skadegorare', 'graderingsdatum', 'utvecklingsstadium', 'varde', 'latitud', 'longitud', 'Series_id', 'sort', 'forfrukt', 'matmetod']
 
     data_df = jbv_process.feature_extraction(data_json, wanted_features)
     print('JBV FEATURES:', data_df.shape)
-    
-    data_df2 = jbv_process.feature_extraction(data_json, wanted_features)
-    print('JBV FEATURES 2:', data_df.shape)
-
-    data_df2['Series_id'] = data_df2['Series_id'] + (data_df['Series_id'].max() + 1)
-
-    data_df = pd.concat([data_df,data_df2], axis=0)
-    print('Joined JBV Data:', data_df.shape)
  
-    # data_df = data_df[data_df['matmetod'] == '% ang blad 1–3']
+    data_df = data_df[data_df['matmetod'] == '% ang blad 1–3']
     agg_dict = {'ekologisk': 'first',
                 'groda': 'first',
                 'skadegorare': 'first',
@@ -77,8 +63,8 @@ if __name__ == '__main__':
     data_df = jbv_process.filter_uncommon_or_short_span(data_df)
     print('DROPPED SHORT/UNCOMMON SERIES', data_df.shape)
  
-    # Interpolate JBV data
-    # data_df = jbv_process.interpolate_jbv_data(data_df, method='linear')
+    # # Interpolate JBV data
+    # data_df = jbv_process.interpolate_jbv_data(data_df, method='polynomial', order=2)
     # print('JBV INTERPOLATED:', data_df.shape)
  
     # Clean and convert coordinates
@@ -86,7 +72,9 @@ if __name__ == '__main__':
     data_gdf = jbv_process.sweref99tm_to_wgs84(data_df)
     data_gdf = jbv_process.remove_outside_sweden_coordinates(data_gdf)
     print('COORDS CLEANED:', data_gdf.shape)
- 
+
+    data_gdf = jbv_process.get_surrounding_varde(data_gdf)
+    print('COORDS CLEANED:', data_gdf.shape)
     # print(data_gdf.head(20))
     data_gdf = data_gdf.dropna()
  
@@ -132,8 +120,8 @@ if __name__ == '__main__':
     print('SMHI GATHERED:', data_gdf.shape)
  
     # Save as pickle
-    data_gdf.to_csv('v2.csv', index=False)
-    data_gdf.to_pickle("v2.pkl")
+    data_gdf.to_csv('little2.csv', index=False)
+    data_gdf.to_pickle("little2.pkl")
  
     # Save data as test_out.pkl
     # can be read as follows

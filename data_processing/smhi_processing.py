@@ -222,18 +222,6 @@ def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_da
 
     return gdf.to_crs("EPSG:4326")
 
-def estimate_daily_LWD(humidity, rainfall, rh_threshold=70, rain_threshold=0.2):
-    """
-    Estimate daily Leaf Wetness Duration (LWD).
-    - If RH > 70%, calculate scaled LWD.
-    - If rainfall > 0.2mm, assume 24 hours of wetness.
-    """
-    if rainfall > rain_threshold:
-        return 24  # Assume full-day wetness if it rains
-    elif humidity > rh_threshold:
-        return 24 * (humidity - rh_threshold) / (100 - rh_threshold)  # Scale LWD
-    return 0  # No wetness if RH is too low
-
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from shapely.geometry import LineString, Point
