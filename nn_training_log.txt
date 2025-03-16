@@ -1,0 +1,55 @@
+Neural Network Training Settings:
+Input Features: 27
+Layer Sizes: [54, 54, 54]
+Learning Rate: 0.0008
+Batch Size: 32
+Epochs: 100
+Patience: 8
+Runs/Combination: 10
+
+AVERAGE R2 SCORES FOR EACH FEATURE COMBINATION:
+
+-- FEATURES: ['1w_varde'] --
+Run 1. Top 1 features. R2 0.292.
+Run 2. Top 1 features. R2 0.23.
+Run 3. Top 1 features. R2 0.187.
+Run 4. Top 1 features. R2 0.165.
+Run 5. Top 1 features. R2 0.271.
+Run 6. Top 1 features. R2 0.251.
+Run 7. Top 1 features. R2 0.229.
+Run 8. Top 1 features. R2 0.251.
+Run 9. Top 1 features. R2 0.242.
+Run 10. Top 1 features. R2 0.315.
+Average R2 for top 1 features (10 runs): 0.243
+
+-- FEATURES: ['1w_varde', 'sensitivity', '2w_Nederb�rdsm�ngd_sum', '2w_Nederb�rdsm�ngd_max', '2w_Daggpunktstemperatur_mean'] --
+Run 1. Top 5 features. R2 0.391.
+Run 2. Top 5 features. R2 0.358.
+Run 3. Top 5 features. R2 0.412.
+Run 4. Top 5 features. R2 0.352.
+Run 5. Top 5 features. R2 0.385.
+Run 6. Top 5 features. R2 0.38.
+Run 7. Top 5 features. R2 0.383.
+Run 8. Top 5 features. R2 0.398.
+Run 9. Top 5 features. R2 0.413.
+Run 10. Top 5 features. R2 0.374.
+Average R2 for top 5 features (10 runs): 0.385
+
+-- FEATURES: ['1w_varde', 'sensitivity', '2w_Nederb�rdsm�ngd_sum', '2w_Nederb�rdsm�ngd_max', '2w_Daggpunktstemperatur_mean', '1w_Solskenstid_sum', 'Relativ Luftfuktighet_mean', '1w_Daggpunktstemperatur_mean', '2w_Solskenstid_sum'] --
+Run 1. Top 9 features. R2 0.245.
+Run 2. Top 9 features. R2 0.309.
+Run 3. Top 9 features. R2 0.246.
+Run 4. Top 9 features. R2 0.367.
+Run 5. Top 9 features. R2 0.374.
+Run 6. Top 9 features. R2 0.355.
+Run 7. Top 9 features. R2 0.375.
+Run 8. Top 9 features. R2 0.394.
+Run 9. Top 9 features. R2 0.316.
+Run 10. Top 9 features. R2 0.338.
+Average R2 for top 9 features (10 runs): 0.332
+
+Stopping feature addition at 8 features.
+Average R2 scores for each feature count:
+Top 1 features: 0.243
+Top 5 features: 0.385
+Top 9 features: 0.332
