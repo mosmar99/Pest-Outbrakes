@@ -8,13 +8,13 @@ import matplotlib.pyplot as plt
 # from sklearn.ensemble import GradientBoostingRegressor as model
 # from pygam import LinearGAM as model
 # from sklearn.gaussian_process import GaussianProcessClassifier as classifier_model
-from sklearn.ensemble import HistGradientBoostingRegressor as model
+# from sklearn.ensemble import HistGradientBoostingRegressor as model
 # from sklearn.ensemble import HistGradientBoostingClassifier as classifier_model
 # from sklearn.decomposition import PCA
 # import umap.umap_ as umap
 # from sklearn.neural_network import MLPRegressor as model
 # from sklearn.neural_network import MLPClassifier as classifier_model
-# from xgboost import XGBRegressor as model
+from xgboost import XGBRegressor as model
 # from xgboost import XGBClassifier as classifier_model
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, accuracy_score, confusion_matrix
@@ -76,9 +76,22 @@ lagged_weather = {f'{days}w_{col}': data_gdf.groupby('Series_id')[col].shift(day
 lagged_weather_df = pd.DataFrame(lagged_weather)
 data_gdf = pd.concat([data_gdf, lagged_weather_df], axis=1)
 
-data_gdf = data_gdf.drop(['Lufttemperatur_min', 'Lufttemperatur_max',
-       'Nederbördsmängd_sum', 'Nederbördsmängd_max', 'Solskenstid_sum', 'Daggpunktstemperatur_max',
-       'Långvågs-Irradians_mean'], axis=1)
+agg_year = {'Nederbördsmängd_sum': 'sum',
+            'Daggpunktstemperatur_mean': 'mean',
+            'Relativ Luftfuktighet_mean': 'mean',
+            'Lufttemperatur_max': 'mean',
+            'Solskenstid_sum': 'sum'}
+
+# data_gdf['year'] = data_gdf['graderingsdatum'].dt.year
+# data_gdf = data_gdf.sort_values(by=['Series_id', 'graderingsdatum'])
+# cumulative = data_gdf.groupby(['year', 'Series_id']).rolling(window=52, on='graderingsdatum', min_periods=1).agg(agg_year).reset_index()
+# col_names = {key: f'{key}_year_cumulative'for key in agg_year.keys()}
+# cumulative = cumulative.rename(columns=col_names)
+# data_gdf[list(col_names.values())] = cumulative[list(col_names.values())]
+
+# data_gdf = data_gdf.drop(['Lufttemperatur_min', 'Lufttemperatur_max',
+#        'Nederbördsmängd_sum', 'Nederbördsmängd_max', 'Solskenstid_sum', 'Daggpunktstemperatur_max',
+#        'Långvågs-Irradians_mean'], axis=1)
 
 # for pest in vardes:
 #     delta = data_gdf.groupby('Series_id')[pest].shift(1) - data_gdf.groupby('Series_id')[pest].shift(2)
