@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 # from pygam import LinearGAM as model
 # from sklearn.gaussian_process import GaussianProcessClassifier as classifier_model
 from sklearn.ensemble import HistGradientBoostingRegressor as model
-from sklearn.ensemble import HistGradientBoostingClassifier as classifier_model
-# from sklearn.decomposition import PCA as reducer
+# from sklearn.ensemble import HistGradientBoostingClassifier as classifier_model
+# from sklearn.decomposition import PCA
 # import umap.umap_ as umap
 # from sklearn.neural_network import MLPRegressor as model
 # from sklearn.neural_network import MLPClassifier as classifier_model
@@ -18,7 +18,7 @@ from sklearn.ensemble import HistGradientBoostingClassifier as classifier_model
 # from xgboost import XGBClassifier as classifier_model
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, accuracy_score, confusion_matrix
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 import data_processing.jbv_process as jbv_process
 # from shapely import Point
 field_id = 1807
@@ -53,44 +53,40 @@ data_gdf['target'] = data_gdf[target]
 
 vardes = ['Bladfläcksvampar', 'Brunrost', 'Svartpricksjuka','Gulrost', 'Mjöldagg', 'Vetets bladfläcksjuka', 'Gräsbladlus', 'Sädesbladlus', 'Havrebladlus', 'Nederbörd']
 
-# res = []
-# for skadegorare in vardes_include:
+# datasets = []
+# for skadegorare in vardes:
 #     pest = data_gdf.copy()
 #     pest['target'] = pest[skadegorare]
 #     pest['target_pest'] = skadegorare
-#     res.append(pest)
+#     datasets.append(pest)
 
-# data_gdf = pd.concat(res).reset_index()
+# data_gdf = pd.concat(datasets).reset_index()
 
 # data_gdf['target1'] = data_gdf['target'] * (data_gdf['utvecklingsstadium_mean']/100)
 # data_gdf['target2'] = data_gdf['varde'] - (data_gdf['varde_mean'])
 # data_gdf['target3'] = data_gdf['varde'] - data_gdf.groupby('Series_id')['varde'].shift(1)
 
-# data_gdf['lwd'] = (data_gdf['Relativ Luftfuktighet_mean']/100) * data_gdf['Nederbördsmängd_sum']
-# data_gdf['d_at_dt'] = (data_gdf['Daggpunktstemperatur_mean'] - data_gdf['Lufttemperatur_mean']) * (data_gdf['Relativ Luftfuktighet_max']/100)
-# data_gdf['test'] = data_gdf['Solskenstid_sum'] / (data_gdf['Nederbördsmängd_sum'] + 1)
-# data_gdf['test2'] = data_gdf['Solskenstid_sum'] / (data_gdf['Nederbördsmängd_sum'] + 1) 
+data_gdf['lwd'] = data_gdf['Daggpunktstemperatur_mean'] * (data_gdf['Relativ Luftfuktighet_mean']/100) * data_gdf['Nederbördsmängd_sum'] / data_gdf['Solskenstid_sum']
+data_gdf['d_at_dt'] = (data_gdf['Daggpunktstemperatur_mean'] - data_gdf['Lufttemperatur_min'])
 
-# lag_weather = ['lwd', 'd_at_dt', 'test','Lufttemperatur_mean', 'Lufttemperatur_min',
-#        'Nederbördsmängd_min', 'Solskenstid_sum', 'Solskenstid_max',
-#        'Daggpunktstemperatur_mean', 'Daggpunktstemperatur_min',
-#        'Daggpunktstemperatur_max', 'Relativ Luftfuktighet_mean',
-#        'Relativ Luftfuktighet_min', 'Relativ Luftfuktighet_max',
-#        'Långvågs-Irradians_mean', 'Långvågs-Irradians_min',
-#        'Långvågs-Irradians_max']
+lag_weather = ['lwd', 'd_at_dt', 'Relativ Luftfuktighet_mean', 'Daggpunktstemperatur_mean']
 
-# lagged_weather = {f'{days}w_{col}': data_gdf.groupby('Series_id')[col].shift(days) for days in range(1,3) for col in lag_weather }
+lagged_weather = {f'{days}w_{col}': data_gdf.groupby('Series_id')[col].shift(days) for days in range(1,2) for col in lag_weather }
 
-# lagged_weather_df = pd.DataFrame(lagged_weather)
-# data_gdf = pd.concat([data_gdf, lagged_weather_df], axis=1)
+lagged_weather_df = pd.DataFrame(lagged_weather)
+data_gdf = pd.concat([data_gdf, lagged_weather_df], axis=1)
 
-# data_gdf = data_gdf.drop(['Lufttemperatur_mean', 'Lufttemperatur_min',
-#        'Nederbördsmängd_min', 'Solskenstid_sum', 'Solskenstid_max',
-#        'Daggpunktstemperatur_mean', 'Daggpunktstemperatur_min',
-#        'Daggpunktstemperatur_max', 'Relativ Luftfuktighet_mean',
-#        'Relativ Luftfuktighet_min', 'Relativ Luftfuktighet_max',
-#        'Långvågs-Irradians_mean', 'Långvågs-Irradians_min',
-#        'Långvågs-Irradians_max'], axis=1)
+data_gdf = data_gdf.drop(['Lufttemperatur_min', 'Lufttemperatur_max',
+       'Nederbördsmängd_sum', 'Nederbördsmängd_max', 'Solskenstid_sum', 'Daggpunktstemperatur_max',
+       'Långvågs-Irradians_mean'], axis=1)
+
+# for pest in vardes:
+#     delta = data_gdf.groupby('Series_id')[pest].shift(1) - data_gdf.groupby('Series_id')[pest].shift(2)
+#     steps = [5,10,15,20,25,30]
+#     for step in steps:
+#         data_gdf[f'{pest}_inc_{step}'] = delta > step
+#         data_gdf[f'{pest}_dec_{step}'] = delta < -step
+
 
 # data_gdf = data_gdf.loc[:, data_gdf.nunique() > 1]
 
@@ -104,10 +100,10 @@ data_gdf = pd.concat([data_gdf, lagged_dependent_df], axis=1)
 
 # data_gdf = pd.get_dummies(data_gdf, columns=['target_pest'])
 
+objects = data_gdf.select_dtypes(include=['object']).columns
+data_gdf = data_gdf.drop(objects, axis=1)
 
-# data_gdf = data_gdf.drop(objects, axis=1)
-
-# data_gdf = data_gdf.dropna()
+data_gdf = data_gdf.dropna()
 
 # conditions = [
 #     data_gdf['target3'] >= 10,
@@ -119,39 +115,47 @@ data_gdf = pd.concat([data_gdf, lagged_dependent_df], axis=1)
 
 # data_gdf['direction'] = np.select(conditions, choices, default='none')
 
-data_gdf.to_csv('data_gdf.csv', index=False)
 print(data_gdf.dtypes)
 numeric = data_gdf.select_dtypes(include=['float64', 'int64', 'UInt32', 'bool']).columns
 X = data_gdf[numeric].drop(['target', 'utvecklingsstadium'] + vardes, axis=1)
-
 y = data_gdf['target']
 
-X.to_csv('X.csv', index=None)
-y.to_csv('y.csv', index=None)
+scaler_X = MinMaxScaler()
+X = pd.DataFrame(scaler_X.fit_transform(X), columns=X.columns, index=X.index)
+
+scaler_y = MinMaxScaler()
+y = pd.DataFrame(scaler_y.fit_transform(y.to_numpy().reshape(-1,1)), index=y.index)
 
 test_year = 2022
-dir_training_year = 2022
 
 print(X.columns)
-test_mask = data_gdf['graderingsdatum'].dt.year >= test_year
-train_mask = ~(test_mask)
+test_mask = data_gdf['graderingsdatum'].dt.year == test_year
+train_mask = ~(test_mask) | (data_gdf['graderingsdatum'].dt.year != 2023) | (data_gdf['graderingsdatum'].dt.year != 2018)
 
-print('testing on:',sum(test_mask)/len(test_mask))
+print('testing on:', sum(test_mask)/len(test_mask))
 X_train, X_test = X[train_mask], X[test_mask]
 y_train, y_test = y[train_mask], y[test_mask]
+
+X_train.to_csv('X_train.csv', index=False)
+X_test.to_csv('X_test.csv', index=False)
+y_train.to_csv('y_train.csv', index=False)
+y_test.to_csv('y_test.csv', index=False)
 
 ml_model = model()
 ml_model.fit(X_train, y_train)
 
 y_pred = pd.Series(ml_model.predict(X_test), index=y_test.index)
 
-# Field_mask = data_gdf['Series_id'].reindex_like(y_pred) == field_id
-# # plt.scatter(y_pred, y_test, label='y_pred')
-# plt.plot(data_gdf['graderingsdatum'].reindex_like(y_pred[Field_mask]), y_pred[Field_mask], label='y_pred')
-# plt.plot(data_gdf['graderingsdatum'].reindex_like(y_test[Field_mask]), y_test[Field_mask], label='y_actual')
+y_pred = pd.Series(scaler_y.inverse_transform(y_pred.to_numpy().reshape(-1,1)).flatten(), index=y_pred.index)
+y_test = pd.Series(scaler_y.inverse_transform(y_test.to_numpy().reshape(-1,1)).flatten(), index=y_pred.index)
 
-# plt.legend()
-# plt.show()
+Field_mask = X_test['Series_id'] == field_id
+# plt.scatter(y_pred, y_test, label='y_pred')
+plt.plot(data_gdf['graderingsdatum'].reindex_like(y_pred[Field_mask]), y_pred[Field_mask], label='y_pred')
+plt.plot(data_gdf['graderingsdatum'].reindex_like(y_test[Field_mask]), y_test[Field_mask], label='y_actual')
+
+plt.legend()
+plt.show()
 
 # plt.figure(figsize=(16,10))
 # plt.plot(range(len(y_test)),y_test, color='blue', zorder=1, lw=2, label='TRUE')
