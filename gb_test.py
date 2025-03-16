@@ -66,15 +66,15 @@ vardes = ['Bladfläcksvampar', 'Brunrost', 'Svartpricksjuka','Gulrost', 'Mjölda
 # data_gdf['target2'] = data_gdf['varde'] - (data_gdf['varde_mean'])
 # data_gdf['target3'] = data_gdf['varde'] - data_gdf.groupby('Series_id')['varde'].shift(1)
 
-data_gdf['lwd'] = data_gdf['Daggpunktstemperatur_mean'] * (data_gdf['Relativ Luftfuktighet_mean']/100) * data_gdf['Nederbördsmängd_sum'] / data_gdf['Solskenstid_sum']
-data_gdf['d_at_dt'] = (data_gdf['Daggpunktstemperatur_mean'] - data_gdf['Lufttemperatur_min'])
+# data_gdf['lwd'] = data_gdf['Daggpunktstemperatur_mean'] * (data_gdf['Relativ Luftfuktighet_mean']/100) * data_gdf['Nederbördsmängd_sum'] / data_gdf['Solskenstid_sum']
+# data_gdf['d_at_dt'] = (data_gdf['Daggpunktstemperatur_mean'] - data_gdf['Lufttemperatur_min'])
 
-lag_weather = ['lwd', 'd_at_dt', 'Relativ Luftfuktighet_mean', 'Daggpunktstemperatur_mean']
+# lag_weather = ['lwd', 'd_at_dt', 'Relativ Luftfuktighet_mean', 'Daggpunktstemperatur_mean']
 
-lagged_weather = {f'{days}w_{col}': data_gdf.groupby('Series_id')[col].shift(days) for days in range(1,2) for col in lag_weather }
+# lagged_weather = {f'{days}w_{col}': data_gdf.groupby('Series_id')[col].shift(days) for days in range(1,2) for col in lag_weather }
 
-lagged_weather_df = pd.DataFrame(lagged_weather)
-data_gdf = pd.concat([data_gdf, lagged_weather_df], axis=1)
+# lagged_weather_df = pd.DataFrame(lagged_weather)
+# data_gdf = pd.concat([data_gdf, lagged_weather_df], axis=1)
 
 agg_year = {'Nederbördsmängd_sum': 'sum',
             'Daggpunktstemperatur_mean': 'mean',
@@ -82,16 +82,16 @@ agg_year = {'Nederbördsmängd_sum': 'sum',
             'Lufttemperatur_max': 'mean',
             'Solskenstid_sum': 'sum'}
 
-# data_gdf['year'] = data_gdf['graderingsdatum'].dt.year
-# data_gdf = data_gdf.sort_values(by=['Series_id', 'graderingsdatum'])
-# cumulative = data_gdf.groupby(['year', 'Series_id']).rolling(window=52, on='graderingsdatum', min_periods=1).agg(agg_year).reset_index()
-# col_names = {key: f'{key}_year_cumulative'for key in agg_year.keys()}
-# cumulative = cumulative.rename(columns=col_names)
-# data_gdf[list(col_names.values())] = cumulative[list(col_names.values())]
+data_gdf['year'] = data_gdf['graderingsdatum'].dt.year
+data_gdf = data_gdf.sort_values(by=['Series_id', 'graderingsdatum'])
+cumulative = data_gdf.groupby(['year', 'Series_id']).rolling(window=52, on='graderingsdatum', min_periods=1).agg(agg_year).reset_index()
+col_names = {key: f'{key}_year_cumulative'for key in agg_year.keys()}
+cumulative = cumulative.rename(columns=col_names)
+data_gdf[list(col_names.values())] = cumulative[list(col_names.values())]
 
-# data_gdf = data_gdf.drop(['Lufttemperatur_min', 'Lufttemperatur_max',
-#        'Nederbördsmängd_sum', 'Nederbördsmängd_max', 'Solskenstid_sum', 'Daggpunktstemperatur_max',
-#        'Långvågs-Irradians_mean'], axis=1)
+data_gdf = data_gdf.drop(['Lufttemperatur_min', 'Lufttemperatur_max',
+       'Nederbördsmängd_sum', 'Nederbördsmängd_max', 'Solskenstid_sum', 'Daggpunktstemperatur_max',
+       'Långvågs-Irradians_mean'], axis=1)
 
 # for pest in vardes:
 #     delta = data_gdf.groupby('Series_id')[pest].shift(1) - data_gdf.groupby('Series_id')[pest].shift(2)
@@ -143,7 +143,10 @@ test_year = 2022
 
 print(X.columns)
 test_mask = data_gdf['graderingsdatum'].dt.year == test_year
-train_mask = ~(test_mask) | (data_gdf['graderingsdatum'].dt.year != 2023) | (data_gdf['graderingsdatum'].dt.year != 2018)
+badyears = ((data_gdf['graderingsdatum'].dt.year != 2023) & (data_gdf['graderingsdatum'].dt.year != 2018))
+
+train_mask = ~(test_mask)
+print(sum(train_mask)/len(train_mask))
 
 print('testing on:', sum(test_mask)/len(test_mask))
 X_train, X_test = X[train_mask], X[test_mask]
