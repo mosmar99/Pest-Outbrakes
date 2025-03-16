@@ -13,52 +13,59 @@ pd.set_option('future.no_silent_downcasting', True)
 if __name__ == '__main__':
     groda='höstvete'
     skadegorare = 'Svartpricksjuka'
-    from_date = '2020-01-01' #'2016-01-07'
+    from_date = '2016-01-01' #'2016-01-07'
     to_date = '2024-01-01'
  
-    data_json = jbv_api.get_gradings(from_date=from_date, to_date=to_date, groda=groda, skadegorare=skadegorare)
+    data_json = jbv_api.get_gradings(from_date=from_date, to_date=to_date, groda=groda)
     print("---FETCHED JBV-DATA")
 
-    wanted_features = ['forforfrukt', 'ekologisk', 'groda', 'skadegorare', 'graderingsdatum', 'utvecklingsstadium', 'varde', 'latitud', 'longitud', 'Series_id', 'sort', 'forfrukt', 'matmetod']
-
-    data_df = jbv_process.feature_extraction(data_json, wanted_features)
+    data_df = jbv_process.feature_extraction(data_json)
     print('JBV FEATURES:', data_df.shape)
  
-    data_df = data_df[data_df['matmetod'] == '% ang blad 1–3']
-    agg_dict = {'ekologisk': 'first',
+    wanted_skadegorare = ['Svartpricksjuka', 'Vetets bladfläcksjuka', 'Bladfläcksvampar', 'Mjöldagg', 'Gulrost', 'Brunrost', 'Nederbörd', 'Havrebladlus', 'Sädesbladlus', 'Gräsbladlus']
+
+    data_df = data_df[data_df['matmetod'].isin(['% ang blad 1–3', 'mm', 'antal/strå'])]
+    data_df = data_df[data_df['skadegorare'].isin(wanted_skadegorare)]
+    print('JBV Filtered matmetod and skadegorare:', data_df.shape)
+    # print(data_df.iloc[80000:80040,:])
+    # mask = data_df['Series_id'] == 512
+
+    agg_dict = {'delomrade': 'first',
+                'ekologisk': 'first',
+                'forforfrukt': 'first',
+                'forfrukt': 'first',
                 'groda': 'first',
-                'skadegorare': 'first',
-                'utvecklingsstadium': 'mean',
-                'varde': 'first',
+                'jordart': 'first',
+                'lan': 'first',
                 'latitud': 'first',
                 'longitud': 'first',
+                'plojt': 'first',
+                'sadatum': 'first',
+                'skordear': 'first',
                 'sort': 'first',
-                'forfrukt': 'first',
-                'forforfrukt': 'first'}
-   
-    data_df = data_df.groupby(['Series_id', 'graderingsdatum']).agg(agg_dict).reset_index()
+                'broddbehandling': 'first',
+                'utplaceringsdatumFalla': 'first',
+                'graderingstyp':'first',
+                'utvecklingsstadium': 'mean',
+                'matmetod': 'first',
+                # 'skadegorare': 'first',
+                }
+
+    data_df = data_df.groupby(['Series_id', 'graderingsdatum', 'skadegorare']).agg({**agg_dict, 'varde':'first'}).reset_index()
+    pivot = data_df.pivot(index=['Series_id', 'graderingsdatum'], columns=['skadegorare'], values='varde').fillna(0)
+
+    data_df = data_df.groupby(['Series_id', 'graderingsdatum']).agg({**agg_dict})
+    data_df = data_df.join(pivot).reset_index()
     print('Aggregated data:', data_df.shape)
 
-    data_df = jbv_process.add_sensitivity(data_df, fill_na='median')
-    print('Added Sensitivity:', data_df.shape)
+    # data_df = jbv_process.add_sensitivity(data_df, fill_na='median')
+    # print('Added Sensitivity:', data_df.shape)
     # Aggregate JBV data
- 
-    # agg_dict = {'ekologisk': 'first',
-    #             'groda': 'first',
-    #             'skadegorare': 'first',
-    #             'utvecklingsstadium': 'mean',
-    #             'varde': 'mean',
-    #             'latitud': 'first',
-    #             'longitud': 'first'}
- 
-    # data_df = jbv_process.aggregate_data_for_series(data_df, agg_dict, time_period='W-SUN')
-    # print('JBV AGGREGATED:', data_df.shape)
  
     data_df = jbv_process.drop_rows_with_missing_values(data_df)
     data_df = jbv_process.drop_duplicates(data_df)
     print('DROPPED DUPLICATES AND NAN:', data_df.shape)
- 
- 
+
     # Filter out uncommon and short Week Spans
     data_df = jbv_process.filter_uncommon_or_short_span(data_df)
     print('DROPPED SHORT/UNCOMMON SERIES', data_df.shape)
@@ -73,10 +80,10 @@ if __name__ == '__main__':
     data_gdf = jbv_process.remove_outside_sweden_coordinates(data_gdf)
     print('COORDS CLEANED:', data_gdf.shape)
 
-    data_gdf = jbv_process.get_surrounding_varde(data_gdf)
+    # data_gdf = jbv_process.get_surrounding_varde(data_gdf)
     print('COORDS CLEANED:', data_gdf.shape)
     # print(data_gdf.head(20))
-    data_gdf = data_gdf.dropna()
+    # data_gdf = data_gdf.dropna()
  
     # Get SMHI Data
     TEMP = '2'
@@ -88,25 +95,17 @@ if __name__ == '__main__':
     LONG_WAVE_IRR = '24'
     WIND_SPEED = '4'
  
-    params = [(TEMP, 'mean'),
-              (TEMP, 'min'),
+    params = [(TEMP, 'min'),
               (TEMP, 'max'),
               (RAIN, 'sum'),
               (RAIN, 'max'),
-              (RAIN, 'min'),
               (SUN, 'sum'),
-              (SUN, 'min'),
-              (SUN, 'max'),
               (DEWPOINT, 'mean'),
-              (DEWPOINT, 'min'),
               (DEWPOINT, 'max'),
               (HUMIDITY, 'mean'),
-              (HUMIDITY, 'min'),
-              (HUMIDITY, 'max'),
               (LONG_WAVE_IRR, 'mean'),
-              (LONG_WAVE_IRR, 'min'),
-              (LONG_WAVE_IRR, 'max'),]
- 
+              ]
+
     data_gdf = smhi_processing.gather_weather_data(
         data_gdf,
         params,
@@ -118,10 +117,11 @@ if __name__ == '__main__':
         closest_n=3)
    
     print('SMHI GATHERED:', data_gdf.shape)
+    print(data_gdf.head(40))
  
     # Save as pickle
-    data_gdf.to_csv('little2.csv', index=False)
-    data_gdf.to_pickle("little2.pkl")
+    data_gdf.to_csv('more_pests.csv', index=False)
+    data_gdf.to_pickle("more_pests.pkl")
  
     # Save data as test_out.pkl
     # can be read as follows

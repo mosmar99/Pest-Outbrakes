@@ -5,7 +5,7 @@ import pandas as pd
 
 pd.options.mode.chained_assignment = None
 
-def feature_extraction(data_df, wanted_features):
+def feature_extraction(data_df, wanted_features=None):
     """
     Extracts user specified feature from json table
 
@@ -16,23 +16,41 @@ def feature_extraction(data_df, wanted_features):
     Returns:
         pd.DataFrame: A cleaned and sorted dataframe containing extracted grading data.
     """
+    data_df = [{**d, 'Series_id':i} for i, d in enumerate(data_df)]
+    df = pd.json_normalize(
+        data_df,
+        ['graderingstillfalleList', 'graderingList'],
+        ['Series_id',
+         'delomrade',
+         'ekologisk',
+         'forforfrukt',
+         'forfrukt',
+         'groda',
+         'jordart',
+         'lan',
+         'latitud',
+         'longitud',
+         'plojt',
+         'sadatum',
+         'sort',
+         'skordear',
+         'broddbehandling',
+         'utplaceringsdatumFalla',
+         ['graderingstillfalleList', 'graderingsdatum'],
+         ['graderingstillfalleList', 'graderingstyp'],
+         ['graderingstillfalleList', 'utvecklingsstadium']
+        ],
+        errors='ignore',
+    )
+    df = df.rename(columns={'graderingstillfalleList.graderingsdatum': 'graderingsdatum',
+                            'graderingstillfalleList.graderingstyp': 'graderingstyp', 
+                            'graderingstillfalleList.utvecklingsstadium': 'utvecklingsstadium'})
+    
+    if wanted_features is not None:
+        df = df[wanted_features]
+    df['graderingsdatum'] = pd.to_datetime(df['graderingsdatum'])
 
-    data_df = pd.DataFrame(data_df)
-    data_df = data_df.reset_index().rename(columns={'index': 'Series_id'})
-    exploded_graderingstillfalleList = data_df.explode('graderingstillfalleList')
-    normalized_graderingstillfalleList = pd.json_normalize(exploded_graderingstillfalleList['graderingstillfalleList'])
-
-    normalized_graderingList = normalized_graderingstillfalleList.explode('graderingList')
-    normalized_graderingList = pd.json_normalize(normalized_graderingList['graderingList'])
-
-    combined_df = pd.concat([exploded_graderingstillfalleList.reset_index(drop=True), normalized_graderingstillfalleList.reset_index(drop=True)], axis=1)
-    combined_df = pd.concat([combined_df.reset_index(drop=True), normalized_graderingList.reset_index(drop=True)], axis=1)
-    combined_df = combined_df.drop(columns=['graderingstillfalleList', 'graderingList'])
-
-    desired_features_df = combined_df[wanted_features]
-    desired_features_df['graderingsdatum'] = pd.to_datetime(desired_features_df['graderingsdatum'])
-
-    return desired_features_df
+    return df
 
 def remove_outside_sweden_coordinates(data_gdf):
     """Drops datapoints (rows) with coordinates located outside of Sweden
@@ -63,7 +81,7 @@ def drop_rows_with_missing_values(data_df):
     Returns:
         data_df (pd.DataFrame): The ouput dataframe without containing missing location data.
     """
-    return data_df.dropna(subset=['graderingsdatum', 'varde', 'utvecklingsstadium', 'latitud', 'longitud'])
+    return data_df.dropna(subset=['graderingsdatum', 'utvecklingsstadium', 'latitud', 'longitud'])
 
 def drop_duplicates(data_df):
     """Drops duplicate rows & columns from the dataframe.
@@ -204,7 +222,7 @@ def filter_uncommon_or_short_span(data_df, start_min=15, start_max=20, stop_min=
     first_last_week.columns = ['week_first', 'week_last']
     first_last_week = first_last_week.reset_index()
 
-    data_df = data_df.merge(first_last_week, on='Series_id')
+    data_df = data_df.merge(first_last_week, on=['Series_id'])
     week_outlier_mask = (data_df['week_first'] >= start_min) & (data_df['week_first'] <= start_max) & (data_df['week_last'] >= stop_min) & (data_df['week_last'] <= stop_max)
 
     # print(f'keeping {np.sum(week_outlier_mask)} rows, {np.sum(week_outlier_mask) / week_outlier_mask.shape[0]}%')
