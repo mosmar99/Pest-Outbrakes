@@ -31,20 +31,27 @@ dm = datamodule(datamodule.HOSTVETE)
 dm.default_process(target='Svartpricksjuka')
 splits = dm.CV_test_train_split()
 
-X_train, X_test, y_train, y_test = splits[0]
+preds = []
+tests = []
+for X_train, X_test, y_train, y_test in splits:
+    ml_model = model()
+    ml_model.fit(X_train, y_train.squeeze())
 
-ml_model = model()
-ml_model.fit(X_train, y_train.squeeze())
+    y_pred = pd.DataFrame(ml_model.predict(X_test), index=X_test.index)
 
-y_pred = pd.DataFrame(ml_model.predict(X_test), index=X_test.index)
+    y_pred = dm.inverse_scale(y_pred)
+    y_test = dm.inverse_scale(y_test)
 
-y_pred = dm.inverse_scale(y_pred)
-y_test = dm.inverse_scale(y_test)
+    preds.append(y_pred)
+    tests.append(y_test)
 
-Field_mask = dm.data_gdf['Series_id'].reindex_like(y_pred) == field_id
+preds = pd.concat(preds)
+tests = pd.concat(tests)
+
+Field_mask = dm.data_gdf['Series_id'].reindex_like(preds) == field_id
 # plt.scatter(y_pred, y_test, label='y_pred')
-plt.plot(dm.data_gdf['graderingsdatum'].reindex_like(y_pred[Field_mask]), y_pred[Field_mask], label='y_pred')
-plt.plot(dm.data_gdf['graderingsdatum'].reindex_like(y_test[Field_mask]), y_test[Field_mask], label='y_actual')
+plt.plot(dm.data_gdf['graderingsdatum'].reindex_like(preds[Field_mask]), preds[Field_mask], label='y_pred')
+plt.plot(dm.data_gdf['graderingsdatum'].reindex_like(tests[Field_mask]), tests[Field_mask], label='y_actual')
 
 plt.legend()
 plt.show()
@@ -54,7 +61,7 @@ plt.show()
 # plt.plot(range(len(y_pred)),y_pred, color='cyan', lw=2, label='PREDICTED')
 # plt.show()
 
-plt.scatter(y_pred, y_test)
+plt.scatter(preds, tests)
 plt.xlabel('Prediction (Varde)')
 plt.ylabel('Actual (Varde)')
 plt.show()
@@ -93,4 +100,4 @@ plt.tight_layout()
 plt.show()
 
 
-print( 'TEST:  MAE:',mean_absolute_error(y_test, y_pred), 'MSE:', mean_squared_error(y_test, y_pred), 'R2:', r2_score(y_test, y_pred))
+print( 'TEST:  MAE:',mean_absolute_error(tests, preds), 'MSE:', mean_squared_error(tests, preds), 'R2:', r2_score(tests, preds))
