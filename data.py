@@ -2,7 +2,7 @@ import data_processing.jbv_api as jbv_api
 import data_processing.jbv_process as jbv_process
 import data_processing.smhi_api as smhi_api
 import data_processing.smhi_processing as smhi_processing
- 
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -11,8 +11,8 @@ import geopandas as gpd
 pd.set_option('future.no_silent_downcasting', True)
  
 if __name__ == '__main__':
-    groda='höstvete'
-    skadegorare = 'Svartpricksjuka'
+    groda='Rågvete'
+    # skadegorare = 'Svartpricksjuka'
     from_date = '2016-01-01' #'2016-01-07'
     to_date = '2024-01-01'
  
@@ -22,7 +22,9 @@ if __name__ == '__main__':
     data_df = jbv_process.feature_extraction(data_json)
     print('JBV FEATURES:', data_df.shape)
  
-    wanted_skadegorare = ['Svartpricksjuka', 'Vetets bladfläcksjuka', 'Bladfläcksvampar', 'Mjöldagg', 'Gulrost', 'Brunrost', 'Nederbörd', 'Havrebladlus', 'Sädesbladlus', 'Gräsbladlus']
+    # wanted_skadegorare = ['Svartpricksjuka', 'Vetets bladfläcksjuka', 'Bladfläcksvampar', 'Mjöldagg', 'Gulrost', 'Brunrost', 'Nederbörd', 'Havrebladlus', 'Sädesbladlus', 'Gräsbladlus']
+    # wanted_skadegorare = ['Sköldfläcksjuka', 'Kornets bladfläcksjuka', 'Mjöldagg', 'Havrebladlus', 'Sädesbladlus', 'Kornrost', 'Gräsbladlus']
+    wanted_skadegorare = ['Brunrost', 'Gulrost', 'Sköldfläcksjuka', 'Mjöldagg', 'Bladfläcksvampar']
 
     data_df = data_df[data_df['matmetod'].isin(['% ang blad 1–3', 'mm', 'antal/strå'])]
     data_df = data_df[data_df['skadegorare'].isin(wanted_skadegorare)]
@@ -67,7 +69,7 @@ if __name__ == '__main__':
     print('DROPPED DUPLICATES AND NAN:', data_df.shape)
 
     # Filter out uncommon and short Week Spans
-    data_df = jbv_process.filter_uncommon_or_short_span(data_df)
+    data_df = jbv_process.filter_uncommon_or_short_span(data_df, start_min=15, start_max=19, stop_min=26, stop_max=29)
     print('DROPPED SHORT/UNCOMMON SERIES', data_df.shape)
  
     # # Interpolate JBV data
@@ -120,8 +122,8 @@ if __name__ == '__main__':
     print(data_gdf.head(40))
  
     # Save as pickle
-    data_gdf.to_csv('more_pests.csv', index=False)
-    data_gdf.to_pickle("more_pests.pkl")
+    data_gdf.to_csv('more_pests_Rågvete.csv', index=False)
+    data_gdf.to_pickle("more_pests_Rågvete.pkl")
  
     # Save data as test_out.pkl
     # can be read as follows
