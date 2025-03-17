@@ -79,9 +79,15 @@ class datamodule:
         self.X = self.data_gdf[numeric].drop(['target', 'utvecklingsstadium'] + self.dependent + additional_to_drop, axis=1)
         self.y = self.data_gdf[['target']]
 
+    def get_X_y(self):
+        return self.X, self.y
+    
     def normalize_X_y(self):
         self.X = pd.DataFrame(self.scaler_X.fit_transform(self.X), columns=self.X.columns, index=self.X.index)
         self.y = pd.DataFrame(self.scaler_y.fit_transform(self.y), index=self.y.index)
+
+    def normalize_X(self):
+        self.X = pd.DataFrame(self.scaler_X.fit_transform(self.X), columns=self.X.columns, index=self.X.index)
 
     def test_train_split(self, test_size=0.2):
         series = self.data_gdf['Series_id'].unique()
@@ -114,6 +120,23 @@ class datamodule:
             splits.append((X_train, X_test, y_train, y_test))
         return splits
     
+    def sklearn_CV_test_train_split(self, n_folds=10):
+        splits = []
+        series_left = self.data_gdf['Series_id'].unique()
+        test_size = int((1/n_folds) * len(series_left))
+        for fold in range(n_folds):
+            if fold == n_folds:
+                test_mask = self.data_gdf['Series_id'].isin(series_left)
+            else:
+                choice = np.random.choice(series_left, size=test_size, replace=False)
+                series_left = np.setdiff1d(series_left, choice)
+                test_mask = self.data_gdf['Series_id'].isin(choice)
+
+            train_mask = ~(test_mask)
+            splits.append((train_mask, test_mask))
+
+        return splits
+    
     def test_train_split_year(self, test_year=2022):
         test_mask = self.data_gdf['graderingsdatum'].dt.year == test_year
 
@@ -139,6 +162,7 @@ class datamodule:
         self.drop_objects()
         self.drop_na()
         self.X_y_split()
+        # self.normalize_X()
         self.normalize_X_y()
         self.test_train_split(test_size=0.2)
         # self.test_train_split_year(self, test_year=2022)
