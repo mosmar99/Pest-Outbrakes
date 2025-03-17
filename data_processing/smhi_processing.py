@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import geopandas as gpd
+import pickle
 
 def clean_stations(smhi_stations_gdf, dropcols=['latitude','longitude', 'summary', 'link', 'id', 'title', 'ownerCategory', 'owner', 'active', 'updated', 'height']):
     """
@@ -181,6 +182,7 @@ def find_closest_n_stations(gdf, stations_gdf:gpd.GeoDataFrame, max_dist=50000, 
     return loc_to_stations, stations.unique(), utm_crs
 
 def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_date, to_date, weekly=False, max_dist=float('inf'), closest_n=4):
+    all_parameter_data = {}
     for param_id, aggregaton_how in params:
         stations_gdf = f_get_stations(param_id)
         stations_gdf = process_stations(stations_gdf, from_date, to_date)
@@ -202,6 +204,8 @@ def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_da
             relevant_cols = station_data_df.select_dtypes(include=['float64', 'int64', 'datetime64']).columns
             all_station_data = pd.merge(all_station_data, station_data_df[relevant_cols], how='left', on='DateTime (UTC)')
 
+            all_parameter_data[param_name] = all_station_data
+
         weather_data = []
         for location, stations in loc_to_stations.items():
             stations_to_use = stations['key'].to_list()
@@ -215,61 +219,24 @@ def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_da
         weather_data_df = pd.concat(weather_data, axis=0).rename(columns={'DateTime (UTC)': 'graderingsdatum'})
         gdf = pd.merge(gdf, weather_data_df, on=['graderingsdatum', 'geometry'], how='left')
         print('GOT SMHI PARAMETER:', param_name)
+
     return gdf.to_crs("EPSG:4326")
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from shapely.geometry import LineString, Point
     import smhi_api
-    # """
-    # Example usage of module
-    # """
-    from_date = '2020-01-01'
-    to_date = '2021-01-01'
-    param_id = "2"
-    param_id_2 = "5"
-    param_id_3 = "10"
-    params = [(param_id, 'mean'), (param_id_2, 'sum'), (param_id_3, 'sum')]
 
-    # smhi_stations_gdf = smhi_api.get_stations_on_parameter_id(param_id)
-    # smhi_stations_gdf = process_stations(smhi_stations_gdf, from_date, to_date)
+    with open('wdata.pickle', 'rb') as handle:
+        all_parameter_data:pd.DataFrame = pickle.load(handle)
+    
+    humidity_df = all_parameter_data['Relativ Luftfuktighet_mean'].set_index('DateTime (UTC)')
+    rain_df = all_parameter_data['Nederbördsmängd_sum'].set_index('DateTime (UTC)')
 
-    # print(smhi_stations_gdf)
+    print(humidity_df.columns)
+    print(humidity_df.columns.intersection(rain_df.columns))
+    common = humidity_df.columns.intersection(rain_df.columns)
 
-    # smhi_df = smhi_api.get_station_data_on_key_param("188790", param_id)
-    # smhi_df = process_smhi_data(smhi_df, from_date, to_date)
-    # smhi_df = aggregate_smhi_data(smhi_df)
-    # print(smhi_df)
+    for station in common:
+        pass
 
-    # Define three example points in Sweden
-    data = {
-        "Name": ["Stockholm", "Stockholm", "Stockholm",
-                "Gothenburg", "Gothenburg", "Gothenburg",
-                "Malmö", "Malmö", "Malmö"],
-        "geometry": [
-            Point(18.0686, 59.3293), Point(18.0686, 59.3293), Point(18.0686, 59.3293),
-            Point(11.9746, 57.7089), Point(11.9746, 57.7089), Point(11.9746, 57.7089),
-            Point(13.0038, 55.6049), Point(13.0038, 55.6049), Point(13.0038, 55.6049)
-        ],
-        "graderingsdatum": [
-            pd.Timestamp("2020-01-06"), pd.Timestamp("2020-01-13"), pd.Timestamp("2020-01-20"),
-            pd.Timestamp("2020-01-06"), pd.Timestamp("2020-01-13"), pd.Timestamp("2020-01-20"),
-            pd.Timestamp("2020-01-06"), pd.Timestamp("2020-01-13"), pd.Timestamp("2020-01-20")
-        ]
-    }
-
-    # Create a GeoDataFrame
-    gdf = gpd.GeoDataFrame(data, crs="EPSG:4326")
-
-    gdf = gather_weather_data(  gdf,
-                                params,
-                                smhi_api.get_stations_on_parameter_id,
-                                smhi_api.get_station_data_on_key_param,
-                                from_date,
-                                to_date)
-
-    print(gdf)
-    # smhi_gdf = get_station_data_on_key_param("188790", "21", from_date, to_date)
-    # # smhi_gdf = get_station_data_on_key_param("154860", "19", from_date, to_date)
-
-    # print(smhi_gdf)
