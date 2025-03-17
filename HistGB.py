@@ -8,12 +8,12 @@ import os
 
 from datamodule import datamodule
 
-# from sklearn.ensemble import RandomForestRegressor as model
+from sklearn.ensemble import RandomForestRegressor as model
 # from sklearn.ensemble import GradientBoostingRegressor as model
 # from pygam import LinearGAM as model
 # from sklearn.gaussian_process import GaussianProcessClassifier as classifier_model
-from sklearn.ensemble import HistGradientBoostingRegressor as model
-from sklearn.ensemble import HistGradientBoostingClassifier as classifier_model
+# from sklearn.ensemble import HistGradientBoostingRegressor as model
+# from sklearn.ensemble import HistGradientBoostingClassifier as classifier_model
 # import umap.umap_ as umap
 # from sklearn.neural_network import MLPRegressor as model
 # from sklearn.neural_network import MLPClassifier as classifier_model
@@ -48,10 +48,10 @@ for X_train, X_test, y_train, y_test in splits:
 preds = pd.concat(preds)
 tests = pd.concat(tests)
 
-Field_mask = dm.data_gdf['Series_id'].reindex_like(preds) == field_id
+# Field_mask = dm.data_gdf['Series_id'].reindex_like(preds) == field_id
 # plt.scatter(y_pred, y_test, label='y_pred')
-plt.plot(dm.data_gdf['graderingsdatum'].reindex_like(preds[Field_mask]), preds[Field_mask], label='y_pred')
-plt.plot(dm.data_gdf['graderingsdatum'].reindex_like(tests[Field_mask]), tests[Field_mask], label='y_actual')
+plt.plot(range(200), preds.head(200), label='y_pred')
+plt.plot(range(200), tests.head(200), label='y_actual')
 
 plt.legend()
 plt.show()

@@ -74,9 +74,9 @@ class datamodule:
     def drop_na(self):
         self.data_gdf = self.data_gdf.dropna()
 
-    def X_y_split(self):
+    def X_y_split(self, additional_to_drop=[]):
         numeric = self.data_gdf.select_dtypes(include=['float64', 'int64', 'UInt32', 'bool']).columns
-        self.X = self.data_gdf[numeric].drop(['target', 'utvecklingsstadium'] + self.dependent, axis=1)
+        self.X = self.data_gdf[numeric].drop(['target', 'utvecklingsstadium'] + self.dependent + additional_to_drop, axis=1)
         self.y = self.data_gdf[['target']]
 
     def normalize_X_y(self):
