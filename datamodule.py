@@ -6,9 +6,9 @@ import os
 from sklearn.preprocessing import MinMaxScaler
 
 class datamodule:
-    VÅRKORN = 'Vårkorn'
-    HÖSTVETE = 'Höstvete'
-    RÅGVETE = 'Rågvete'
+    VÅRKORN = 'Varkorn'
+    HÖSTVETE = 'Hostvete'
+    RÅGVETE = 'Ragvete'
 
     DISEASES = {HÖSTVETE: ['Bladfläcksvampar', 'Brunrost', 'Svartpricksjuka','Gulrost', 'Mjöldagg', 'Vetets bladfläcksjuka', 'Gräsbladlus', 'Sädesbladlus', 'Havrebladlus',  'Nederbörd'],
                 VÅRKORN: ['Sköldfläcksjuka', 'Kornets bladfläcksjuka', 'Mjöldagg', 'Havrebladlus', 'Sädesbladlus', 'Kornrost', 'Gräsbladlus'],
