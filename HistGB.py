@@ -61,7 +61,7 @@ plt.show()
 # plt.plot(range(len(y_pred)),y_pred, color='cyan', lw=2, label='PREDICTED')
 # plt.show()
 
-plt.scatter(preds, tests)
+plt.scatter(preds, tests, s=10, alpha=0.8, lw=1.5)
 plt.xlabel('Prediction (Varde)')
 plt.ylabel('Actual (Varde)')
 plt.show()
