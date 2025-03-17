@@ -1,17 +1,9 @@
 Neural Network Loss Function Comparison
 
-Settings: batch_size=32, epochs=100, patience=8, learning_rate=0.0008, layers=[54, 54, 54]
+Settings: batch_size=96, epochs=100, patience=0, learning_rate=0.0008, layers=[54, 54, 54]
 
 
-Loss Function: quantile_loss
-Run 1: R^2 = 0.4084
-Run 2: R^2 = 0.4484
-Run 3: R^2 = 0.4060
-Run 4: R^2 = 0.4075
-Run 5: R^2 = 0.4093
-Run 6: R^2 = 0.4155
-Run 7: R^2 = 0.4238
-Run 8: R^2 = 0.3969
-Run 9: R^2 = 0.4038
-Mean R^2 for quantile_loss: 0.4133
+Loss Function: mse
+Run 1: R^2 = 0.0335
+Mean R^2 for mse: 0.0335
 
