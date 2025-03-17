@@ -95,6 +95,25 @@ class datamodule:
         self.X_train, self.X_test = self.X[train_mask], self.X[test_mask]
         self.y_train, self.y_test = self.y[train_mask], self.y[test_mask]
     
+    def CV_test_train_split(self, n_folds=10):
+        splits = []
+        series_left = self.data_gdf['Series_id'].unique()
+        test_size = int((1/n_folds) * len(series_left))
+        for fold in range(n_folds):
+            if fold == n_folds:
+                test_mask = self.data_gdf['Series_id'].isin(series_left)
+            else:
+                choice = np.random.choice(series_left, size=test_size, replace=False)
+                series_left = np.setdiff1d(series_left, choice)
+                test_mask = self.data_gdf['Series_id'].isin(choice)
+
+            train_mask = ~(test_mask)
+            X_train, X_test = self.X[train_mask], self.X[test_mask]
+            y_train, y_test = self.y[train_mask], self.y[test_mask]
+
+            splits.append((X_train, X_test, y_train, y_test))
+        return splits
+    
     def test_train_split_year(self, test_year=2022):
         test_mask = self.data_gdf['graderingsdatum'].dt.year == test_year
 
@@ -109,7 +128,7 @@ class datamodule:
         return self.X_train, self.X_test, self.y_train, self.y_test
     
     def inverse_scale(self, y):
-        return pd.DataFrame(self.scaler_y.inverse_transform(y), index=self.X_test.index)
+        return pd.DataFrame(self.scaler_y.inverse_transform(y), index=y.index)
     
     def default_process(self, target):
         self.set_target(target)

@@ -29,8 +29,9 @@ field_id = 1807
 
 dm = datamodule(datamodule.HOSTVETE)
 dm.default_process(target='Svartpricksjuka')
+splits = dm.CV_test_train_split()
 
-X_train, X_test, y_train, y_test = dm.get_test_train()
+X_train, X_test, y_train, y_test = splits[0]
 
 ml_model = model()
 ml_model.fit(X_train, y_train.squeeze())
