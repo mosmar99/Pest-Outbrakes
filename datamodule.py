@@ -6,13 +6,13 @@ import os
 from sklearn.preprocessing import MinMaxScaler
 
 class datamodule:
-    VÅRKORN = 'Varkorn'
-    HÖSTVETE = 'Hostvete'
-    RÅGVETE = 'Ragvete'
+    VARKORN = 'Varkorn'
+    HOSTVETE = 'Hostvete'
+    RAGVETE = 'Ragvete'
 
-    DISEASES = {HÖSTVETE: ['Bladfläcksvampar', 'Brunrost', 'Svartpricksjuka','Gulrost', 'Mjöldagg', 'Vetets bladfläcksjuka', 'Gräsbladlus', 'Sädesbladlus', 'Havrebladlus',  'Nederbörd'],
-                VÅRKORN: ['Sköldfläcksjuka', 'Kornets bladfläcksjuka', 'Mjöldagg', 'Havrebladlus', 'Sädesbladlus', 'Kornrost', 'Gräsbladlus'],
-                RÅGVETE: ['Brunrost', 'Gulrost', 'Sköldfläcksjuka', 'Mjöldagg', 'Bladfläcksvampar']}
+    DISEASES = {HOSTVETE: ['Bladfläcksvampar', 'Brunrost', 'Svartpricksjuka','Gulrost', 'Mjöldagg', 'Vetets bladfläcksjuka', 'Gräsbladlus', 'Sädesbladlus', 'Havrebladlus',  'Nederbörd'],
+                VARKORN: ['Sköldfläcksjuka', 'Kornets bladfläcksjuka', 'Mjöldagg', 'Havrebladlus', 'Sädesbladlus', 'Kornrost', 'Gräsbladlus'],
+                RAGVETE: ['Brunrost', 'Gulrost', 'Sköldfläcksjuka', 'Mjöldagg', 'Bladfläcksvampar']}
     
     def __init__(self, crop):
         path = os.path.join('datasets', f"{crop}.pkl")

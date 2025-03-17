@@ -27,7 +27,7 @@ import data_processing.jbv_process as jbv_process
 
 field_id = 1807
 
-dm = datamodule(datamodule.HÖSTVETE)
+dm = datamodule(datamodule.HOSTVETE)
 dm.default_process(target='Svartpricksjuka')
 
 X_train, X_test, y_train, y_test = dm.get_test_train()
