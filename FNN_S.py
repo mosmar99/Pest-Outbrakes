@@ -93,7 +93,7 @@ for X_train, X_test, y_train, y_test in splits:
 
 
 end_time = time.time()
-total_time = end_time - start_time / 60
+total_time = (end_time - start_time) / 60
 print(f"Total time: {total_time:.4f} minutes")
 
 preds = pd.concat(all_preds)

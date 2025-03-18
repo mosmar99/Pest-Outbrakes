@@ -155,7 +155,7 @@ for X_train, X_test, y_train, y_test in splits:
     all_tests.append(y_test_df)
 
 end_time = time.time()
-total_time = end_time - start_time / 60
+total_time = (end_time - start_time) / 60
 print(f"Training time: {total_time:.4f} minutes")
 
 preds = pd.concat(all_preds)
