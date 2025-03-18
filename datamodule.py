@@ -89,7 +89,8 @@ class datamodule:
     def normalize_X(self):
         self.X = pd.DataFrame(self.scaler_X.fit_transform(self.X), columns=self.X.columns, index=self.X.index)
 
-    def test_train_split(self, test_size=0.2):
+    def test_train_split(self, test_size=0.2, random_state=42):
+        np.random.seed(random_state)
         series = self.data_gdf['Series_id'].unique()
         sampled_series = np.random.choice(series, size=int(test_size * len(series)), replace=False)
         test_mask = self.data_gdf['Series_id'].isin(sampled_series)
@@ -101,7 +102,8 @@ class datamodule:
         self.X_train, self.X_test = self.X[train_mask], self.X[test_mask]
         self.y_train, self.y_test = self.y[train_mask], self.y[test_mask]
     
-    def CV_test_train_split(self, n_folds=10):
+    def CV_test_train_split(self, n_folds=10, random_state=42):
+        np.random.seed(random_state)
         splits = []
         series_left = self.data_gdf['Series_id'].unique()
         test_size = int((1/n_folds) * len(series_left))
