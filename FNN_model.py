@@ -5,46 +5,71 @@ from torchmetrics import MeanAbsoluteError, R2Score
 
 class FNNRegressor_s(pl.LightningModule):
     """
-    FNNRegressor is a feed-forward neural network for regression tasks.
-
     Args:
-        input_size (int): The size of the input feature vector (number of features).
-        output_size (int, optional): The size of the output. Defaults to 1.
-        hidden_sizes (list, optional): List containing the sizes of hidden layers. Defaults to [128, 64, 32].
-        learning_rate (float, optional): Learning rate for the optimizer. Defaults to 1e-3.
-        weight_decay (float, optional): Weight decay (L2 regularization) for the optimizer. Defaults to 1e-5.
-    
-    Returns:
-        torch.Tensor: A tensor containing the regression prediction for each input sample,
-                      with shape [batch_size].
+        input_size (int): The size of the input feature vector.
+        output_size (int, optional): The size of the output, defaults to 1. Should not be modified, regression model.
+        hidden_sizes (list, optional): List of hidden layer sizes.
+        learning_rate (float, optional): Learning rate for the optimizer.
+        weight_decay (float, optional): Weight decay for the optimizer.
+        activation (str, optional): Options: "relu", "silu", "leaky_relu", defaults to "relu".
+        dropout (float, optional): Dropout rate to apply after each activation, defaults is 0.1.
+        loss_fn_name (str, optional): Options: "huber", "mse", "l1", "smoothl1", defaults is "huber".
     """
-    def __init__(self, input_size, output_size=1, hidden_sizes=[256,128,64,32],
-                 learning_rate=1e-3, weight_decay=1e-5):
+    def __init__(self, 
+                 input_size, 
+                 output_size=1, 
+                 hidden_sizes=[256,128,64,32],
+                 learning_rate=1e-3, 
+                 weight_decay=1e-5, 
+                 activation="relu", 
+                 dropout=0.1,
+                 loss_fn_name="huber"):
         super(FNNRegressor_s, self).__init__()
         self.save_hyperparameters()
-        #self.loss_fn = nn.SmoothL1Loss()
-        self.loss_fn = nn.HuberLoss(delta=1.0)
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
-
+        
         layers = []
         prev_size = input_size
         for hidden in hidden_sizes:
             layers.append(nn.Linear(prev_size, hidden))
-            #layers.append(nn.SiLU())
-            layers.append(nn.ReLU())
-            layers.append(nn.Dropout(0.1))
+            if activation.lower() == "relu":
+                layers.append(nn.ReLU())
+            elif activation.lower() == "silu":
+                layers.append(nn.SiLU())
+            elif activation.lower() == "leaky_relu":
+                layers.append(nn.LeakyReLU())
+            else:
+                raise ValueError(f"Unsupported activation function: {activation}")
+            
+            if dropout > 0:
+                layers.append(nn.Dropout(dropout))
             prev_size = hidden
+
         layers.append(nn.Linear(prev_size, output_size))
         self.model = nn.Sequential(*layers)
         
         self.model.apply(self.init_weights)
         
+        self._set_loss_fn(loss_fn_name)
+
         self.train_mae = MeanAbsoluteError()
         self.val_mae = MeanAbsoluteError()
         self.val_r2 = R2Score()
         self.test_mae = MeanAbsoluteError()
         self.test_r2 = R2Score()
+    
+    def _set_loss_fn(self, loss_fn_name):
+        if loss_fn_name == "huber":
+            self.loss_fn = nn.HuberLoss(delta=1.0)
+        elif loss_fn_name == "mse":
+            self.loss_fn = nn.MSELoss()
+        elif loss_fn_name == "l1":
+            self.loss_fn = nn.L1Loss()
+        elif loss_fn_name == "smoothl1":
+            self.loss_fn = nn.SmoothL1Loss(beta=1.0)
+        else:
+            raise ValueError(f"Unsupported loss function: {loss_fn_name}")
         
     def init_weights(self, m):
         if isinstance(m, nn.Linear):
