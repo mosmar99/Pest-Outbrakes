@@ -106,6 +106,7 @@ i = 0
 
 for X_train, X_test, y_train, y_test in splits:
     print('Run:', i + 1, 'on all folds.')
+    i += 1
     X_train_tensor = torch.tensor(X_train.values, dtype=torch.float)
     y_train_tensor = torch.tensor(y_train.values.ravel(), dtype=torch.float)
     X_test_tensor = torch.tensor(X_test.values, dtype=torch.float)
