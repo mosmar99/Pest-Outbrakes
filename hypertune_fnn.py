@@ -10,22 +10,21 @@ import optuna
 from jbv_models.fnn.model import FNNRegressor  
 import time
 from jbv_models.fnn.datamodule import JBVDataModule
+from optunapruning import CustomOptunaPruningCallback
 
 N_TRIALS = 50
 N_EPOCHS_OPTUNA = 50
 N_EPOCHS_TRAIN = 100
+RANDOM_STATE = 42
 
-np.random.seed(42)
-torch.manual_seed(42)
+np.random.seed(RANDOM_STATE)
+torch.manual_seed(RANDOM_STATE)
 
 #generate splits
 dm = datamodule(datamodule.HOSTVETE)  #Options: Varkorn, Hostvete, Ragvete, look in datamodule to find all pests to train on
 dm.default_process(target='Svartpricksjuka')
-splits = dm.CV_test_train_split(n_folds=10, random_state=42)
+splits = dm.CV_test_train_split(n_folds=10, random_state=RANDOM_STATE)
 logger = CSVLogger("logs")
-
-dm.test_train_split(random_state=42)
-X_train_ht, X_test_ht, y_train_ht, y_test_ht = dm.get_test_train()
 
 def objective(trial):
     #hyperparameters:
@@ -49,7 +48,7 @@ def objective(trial):
     X_train, X_val, y_train, y_val = splits[0]
 
     #use the 
-    trial_data = JBVDataModule(X_train, y_train, X_test=X_val, y_test=y_val, batch_size=16, num_workers=11, val_size=0.2, random_state=42)
+    trial_data = JBVDataModule(X_train, y_train, X_test=X_val, y_test=y_val, batch_size=16, num_workers=11, val_size=0.2, random_state=RANDOM_STATE)
     
     input_size = X_train.shape[1]
     #initialize the model with hyperparameters
@@ -64,7 +63,17 @@ def objective(trial):
     )
     
     #using fewer epochs during tuning for speed
-    trainer = pl.Trainer(max_epochs=N_EPOCHS_OPTUNA, logger=False, enable_checkpointing=False)
+    #trainer = pl.Trainer(max_epochs=N_EPOCHS_OPTUNA, logger=False, enable_checkpointing=False)
+    callbacks = []
+    callbacks.append(CustomOptunaPruningCallback(trial, monitor="val_mse"))
+
+    trainer = pl.Trainer(
+        max_epochs=N_EPOCHS_OPTUNA,
+        logger=False,
+        enable_checkpointing=False,
+        callbacks=callbacks
+    )
+    
     trainer.fit(model, trial_data)
     
     #evaluate on the validation set, dont use the training set here
@@ -79,7 +88,14 @@ def objective(trial):
 
 start_time = time.time()
 #create optuna study and optimize the objective.
-study = optuna.create_study(direction="minimize")
+study = optuna.create_study(
+    direction="minimize",
+    pruner=optuna.pruners.MedianPruner(
+        n_startup_trials=3,   # dont prune the first 5 trials
+        n_warmup_steps=10,     # dont prune the first 5 epochs in each trial
+        interval_steps=1      # check for pruning every epoch after warmup
+    )
+)
 study.optimize(objective, n_trials=N_TRIALS)  #feel free to increase n_trials
 
 print("Best trial:")
@@ -100,7 +116,7 @@ for i, (X_train, X_test, y_train, y_test) in enumerate(splits):
     full_data = JBVDataModule(
         X_train, y_train,
         X_test, y_test,
-        batch_size=32, num_workers=11, val_size=0.2, random_state=42
+        batch_size=32, num_workers=11, val_size=0.2, random_state=RANDOM_STATE
     )
     
     input_size = X_train.shape[1]
