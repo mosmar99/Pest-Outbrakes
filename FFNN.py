@@ -6,12 +6,12 @@ from tensorflow.keras import layers
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 
 class FFNN:
-    def __init__(self, input_shape, quantile=0.55, learning_rate=0.001, dropout_rate=0.1):
+    def __init__(self, input_shape, quantile=0.55, learning_rate=0.000235, dropout_rate=0.07):
         self.quantile = quantile
         self.learning_rate = learning_rate
         self.dropout_rate = dropout_rate
         self.model = self._build_model(input_shape)
-
+        
     def _log_cosh_loss(self, y_true, y_pred):
         return tf.reduce_mean(tf.math.log(tf.cosh(y_pred - y_true)))
     
@@ -19,23 +19,27 @@ class FFNN:
         e = y_true - y_pred
         return tf.reduce_mean(tf.maximum(self.quantile * e, (self.quantile - 1) * e))
     
+    def _rmse(self, y_true, y_pred):
+        return tf.sqrt(tf.reduce_mean(tf.square(y_true - y_pred)))
+    
     def _build_model(self, input_shape):
         model = keras.Sequential()
         model.add(layers.Input(shape=(input_shape,)))
         
-        layer_sizes = [156, 26, 130, 26, 26, 78]
+        # Adjusted layer sizes based on the original model
+        layer_sizes = [192, 224]
         
         for size in layer_sizes:
-            model.add(layers.Dense(size, activation='swish'))
+            model.add(layers.Dense(size, activation='leaky_relu'))
             model.add(layers.BatchNormalization())
             model.add(layers.Dropout(self.dropout_rate))
         
         model.add(layers.Dense(1))
         model.compile(optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate),
-                      loss=self._log_cosh_loss)
+                      loss=self._rmse, metrics=['mae'])
         return model
     
-    def fit(self, X_train, y_train, epochs=12, batch_size=32, patience=3, validation_split=0.2):
+    def fit(self, X_train, y_train, epochs=20, batch_size=32, patience=5, validation_split=0.2):
         early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=patience, restore_best_weights=True)
         history = self.model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size,
                                  validation_split=validation_split, callbacks=[early_stopping], verbose=1)
