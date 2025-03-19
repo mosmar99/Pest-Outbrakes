@@ -24,7 +24,7 @@ class datamodule:
         self.scaler_y = MinMaxScaler()
 
         self.dependent = datamodule.DISEASES[crop]
-        print('Possible targets', self.dependent)
+        # print('Possible targets', self.dependent)
         self.target = None
 
         self.X = None
