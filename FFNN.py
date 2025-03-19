@@ -12,7 +12,7 @@ class FFNN:
         self.dropout_rate = dropout_rate
         self.model = self._build_model(input_shape)
 
-    def _log_cosh_loss(y_true, y_pred):
+    def _log_cosh_loss(self, y_true, y_pred):
         return tf.reduce_mean(tf.math.log(tf.cosh(y_pred - y_true)))
     
     def _quantile_loss(self, y_true, y_pred):

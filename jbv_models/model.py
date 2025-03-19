@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-from torchmetrics import MeanAbsoluteError, R2Score
+from torchmetrics import MeanAbsoluteError, R2Score, MeanSquaredError
 
-class FNNRegressor_s(pl.LightningModule):
+class FNNRegressor(pl.LightningModule):
     """
     Args:
         input_size (int): The size of the input feature vector.
@@ -24,7 +24,7 @@ class FNNRegressor_s(pl.LightningModule):
                  activation="relu", 
                  dropout=0.1,
                  loss_fn_name="huber"):
-        super(FNNRegressor_s, self).__init__()
+        super(FNNRegressor, self).__init__()
         self.save_hyperparameters()
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
@@ -54,10 +54,17 @@ class FNNRegressor_s(pl.LightningModule):
         self._set_loss_fn(loss_fn_name)
 
         self.train_mae = MeanAbsoluteError()
+        self.train_mse = MeanSquaredError()
+        self.train_r2 = R2Score()
+
         self.val_mae = MeanAbsoluteError()
+        self.val_mse = MeanSquaredError()
         self.val_r2 = R2Score()
+
         self.test_mae = MeanAbsoluteError()
+        self.test_mse = MeanSquaredError()
         self.test_r2 = R2Score()
+
     
     def _set_loss_fn(self, loss_fn_name):
         if loss_fn_name == "huber":
@@ -80,13 +87,20 @@ class FNNRegressor_s(pl.LightningModule):
     def forward(self, x):
         return self.model(x).squeeze(-1)
     
+    def predict_step(self, batch, batch_idx, dataloader_idx=0):
+        x, _ = batch
+        return self(x)
+
     def training_step(self, batch):
         x, y = batch
         y_hat = self(x)
         loss = self.loss_fn(y_hat, y)
         self.train_mae.update(y_hat, y)
+        self.train_mse.update(y_hat, y)
+        self.train_r2.update(y_hat, y)
         self.log("train_loss", loss, prog_bar=True, on_epoch=True)
         self.log("train_mae", self.train_mae, prog_bar=True, on_epoch=True)
+        self.log("train_r2", self.train_r2, prog_bar=True, on_epoch=True)
         return loss
     
     def on_train_epoch_end(self):
@@ -97,14 +111,22 @@ class FNNRegressor_s(pl.LightningModule):
         y_hat = self(x)
         loss = self.loss_fn(y_hat, y)
         self.val_mae.update(y_hat, y)
+        self.val_mse.update(y_hat, y)
         self.val_r2.update(y_hat, y)
         self.log("val_loss", loss, prog_bar=True, on_epoch=True)
         return loss
     
     def on_validation_epoch_end(self):
-        self.log("val_mae", self.val_mae.compute())
-        self.log("val_r2", self.val_r2.compute())
+        val_mae = self.val_mae.compute()
+        val_mse = self.val_mse.compute()
+        val_r2  = self.val_r2.compute()
+
+        self.log("val_mae", val_mae)
+        self.log("val_mse", val_mse)
+        self.log("val_r2", val_r2)
+
         self.val_mae.reset()
+        self.val_mse.reset()
         self.val_r2.reset()
     
     def test_step(self, batch):
@@ -112,15 +134,20 @@ class FNNRegressor_s(pl.LightningModule):
         y_hat = self(x)
         loss = self.loss_fn(y_hat, y)
         self.test_mae.update(y_hat, y)
+        self.test_mse.update(y_hat, y)
         self.test_r2.update(y_hat, y)
         self.log("test_loss", loss, prog_bar=True, on_epoch=True)
         return loss
     
     def on_test_epoch_end(self):
+        self.print("Note: These metrics are on scaled data."
+                   "Compute on inverse scaled data as a final stage.")
         self.log("test_mae", self.test_mae.compute())
+        self.log("test_mse", self.test_mse.compute())
         self.log("test_r2", self.test_r2.compute())
         self.test_mae.reset()
         self.test_r2.reset()
+        self.test_mse.reset()
     
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(),
