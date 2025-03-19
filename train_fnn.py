@@ -7,8 +7,8 @@ from pytorch_lightning.loggers import CSVLogger
 import time
 import torch
 import pytorch_lightning as pl
-from jbv_models.fnn.model import FNNRegressor
-from jbv_models.fnn.datamodule import JBVDataModule
+from pytorch_models.fnn.model import FNNRegressor
+from pytorch_models.fnn.datamodule import JBVDataModule
 
 np.random.seed(42)
 torch.manual_seed(42)

@@ -7,9 +7,9 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, r
 from pytorch_lightning.loggers import CSVLogger
 import pytorch_lightning as pl
 import optuna
-from jbv_models.fnn.model import FNNRegressor  
+from pytorch_models.fnn.model import FNNRegressor  
 import time
-from jbv_models.fnn.datamodule import JBVDataModule
+from pytorch_models.fnn.datamodule import JBVDataModule
 from optunapruning import CustomOptunaPruningCallback
 
 N_TRIALS = 50
