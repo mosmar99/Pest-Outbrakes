@@ -6,11 +6,14 @@ from tensorflow.keras import layers
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 
 class FFNN:
-    def __init__(self, input_shape, quantile=0.55, learning_rate=0.0008, dropout_rate=0.4):
+    def __init__(self, input_shape, quantile=0.55, learning_rate=0.001, dropout_rate=0.1):
         self.quantile = quantile
         self.learning_rate = learning_rate
         self.dropout_rate = dropout_rate
         self.model = self._build_model(input_shape)
+
+    def _log_cosh_loss(y_true, y_pred):
+        return tf.reduce_mean(tf.math.log(tf.cosh(y_pred - y_true)))
     
     def _quantile_loss(self, y_true, y_pred):
         e = y_true - y_pred
@@ -19,7 +22,8 @@ class FFNN:
     def _build_model(self, input_shape):
         model = keras.Sequential()
         model.add(layers.Input(shape=(input_shape,)))
-        layer_sizes = 3 * [input_shape * 2]
+        
+        layer_sizes = [156, 26, 130, 26, 26, 78]
         
         for size in layer_sizes:
             model.add(layers.Dense(size, activation='swish'))
@@ -28,7 +32,7 @@ class FFNN:
         
         model.add(layers.Dense(1))
         model.compile(optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate),
-                      loss=self._quantile_loss)
+                      loss=self._log_cosh_loss)
         return model
     
     def fit(self, X_train, y_train, epochs=12, batch_size=32, patience=3, validation_split=0.2):
