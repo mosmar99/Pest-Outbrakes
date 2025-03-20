@@ -1,0 +1,6 @@
+  Model                           R2     MAE    MSE   
+2  HistGradientBoostingRegressor 0.7221 2.5787 39.1634
+3                            SVR 0.7475 2.7084 40.8167
+4                   XGBRegressor 0.7102 2.6959 42.6203
+1                           FFNN 0.4721 3.5169 64.6539
+0          DecisionTreeRegressor 0.5145 3.2243 76.7353

@@ -1,0 +1,66 @@
+   Model                          Crop Pest Combination            R2      MAE    MSE      Count  Data_size
+0   HistGradientBoostingRegressor               Hostvete_Brunrost  0.7686 0.8073  14.2908  1      19595    
+1           DecisionTreeRegressor               Hostvete_Brunrost  0.5154 0.9663  29.9258  1      19595    
+2                    XGBRegressor               Hostvete_Brunrost  0.7451 0.8965  15.7395  1      19595    
+3                            FFNN               Hostvete_Brunrost  0.7021 0.8206  18.3972  1      19595    
+4                             SVR               Hostvete_Brunrost  0.7286 1.2305  16.7603  1      19595    
+5   HistGradientBoostingRegressor                Ragvete_Brunrost  0.3071 0.9911  20.0755  1       2312    
+6           DecisionTreeRegressor                Ragvete_Brunrost  0.2559 0.6313  21.5574  1       2312    
+7                    XGBRegressor                Ragvete_Brunrost  0.4920 0.7234  14.7190  1       2312    
+8                            FFNN                Ragvete_Brunrost -0.3387 2.3575  38.7868  1       2312    
+9                             SVR                Ragvete_Brunrost  0.5332 1.0917  13.5239  1       2312    
+10  HistGradientBoostingRegressor        Ragvete_Bladfläcksvampar  0.5272 2.5729  35.3791  1       2312    
+11          DecisionTreeRegressor        Ragvete_Bladfläcksvampar  0.1956 3.0168  60.1893  1       2312    
+12                   XGBRegressor        Ragvete_Bladfläcksvampar  0.4485 2.7786  41.2714  1       2312    
+13                           FFNN        Ragvete_Bladfläcksvampar -0.0060 4.3960  75.2756  1       2312    
+14                            SVR        Ragvete_Bladfläcksvampar  0.6145 2.1997  28.8452  1       2312    
+15  HistGradientBoostingRegressor                 Ragvete_Gulrost  0.8780 2.7295  39.2521  1       2312    
+16          DecisionTreeRegressor                 Ragvete_Gulrost  0.7542 3.3450  79.0841  1       2312    
+17                   XGBRegressor                 Ragvete_Gulrost  0.8605 2.9242  44.8897  1       2312    
+18                           FFNN                 Ragvete_Gulrost  0.3572 7.1554 206.8109  1       2312    
+19                            SVR                 Ragvete_Gulrost  0.8833 2.4331  37.5581  1       2312    
+20  HistGradientBoostingRegressor         Ragvete_Sköldfläcksjuka  0.5036 1.4570  14.7236  1       2312    
+21          DecisionTreeRegressor         Ragvete_Sköldfläcksjuka  0.2015 1.5180  23.6836  1       2312    
+22                   XGBRegressor         Ragvete_Sköldfläcksjuka  0.5072 1.3836  14.6172  1       2312    
+23                           FFNN         Ragvete_Sköldfläcksjuka -0.1235 2.9128  33.3221  1       2312    
+24                            SVR         Ragvete_Sköldfläcksjuka  0.6495 1.3852  10.3951  1       2312    
+25  HistGradientBoostingRegressor                Ragvete_Mjöldagg  0.8077 7.2973 126.7854  1       2312    
+26          DecisionTreeRegressor                Ragvete_Mjöldagg  0.5938 9.9163 267.8050  1       2312    
+27                   XGBRegressor                Ragvete_Mjöldagg  0.7761 8.0092 147.5941  1       2312    
+28                           FFNN                Ragvete_Mjöldagg  0.7703 8.6327 151.4415  1       2312    
+29                            SVR                Ragvete_Mjöldagg  0.8166 6.4673 120.9159  1       2312    
+30  HistGradientBoostingRegressor                Hostvete_Gulrost  0.8798 0.8859  11.4792  1      19595    
+31          DecisionTreeRegressor                Hostvete_Gulrost  0.7457 1.1512  24.2798  1      19595    
+32                   XGBRegressor                Hostvete_Gulrost  0.8643 0.9684  12.9576  1      19595    
+33                           FFNN                Hostvete_Gulrost  0.8480 0.9240  14.5119  1      19595    
+34                            SVR                Hostvete_Gulrost  0.8667 1.4847  12.7291  1      19595    
+35  HistGradientBoostingRegressor         Varkorn_Sköldfläcksjuka  0.6142 0.5455   4.6873  1      10041    
+36          DecisionTreeRegressor         Varkorn_Sköldfläcksjuka  0.2173 0.6381   9.5093  1      10041    
+37                   XGBRegressor         Varkorn_Sköldfläcksjuka  0.5163 0.6122   5.8769  1      10041    
+38                           FFNN         Varkorn_Sköldfläcksjuka -0.0541 1.0463  12.8070  1      10041    
+39                            SVR         Varkorn_Sköldfläcksjuka  0.6163 1.1472   4.6620  1      10041    
+40  HistGradientBoostingRegressor                Varkorn_Mjöldagg  0.7813 0.7600  11.0592  1      10041    
+41          DecisionTreeRegressor                Varkorn_Mjöldagg  0.5600 0.9154  22.2515  1      10041    
+42                   XGBRegressor                Varkorn_Mjöldagg  0.7471 0.8229  12.7911  1      10041    
+43                           FFNN                Varkorn_Mjöldagg  0.7821 0.6607  11.0198  1      10041    
+44                            SVR                Varkorn_Mjöldagg  0.7942 1.3197  10.4078  1      10041    
+45  HistGradientBoostingRegressor  Varkorn_Kornets bladfläcksjuka  0.7989 2.8609  45.9922  1      10041    
+46          DecisionTreeRegressor  Varkorn_Kornets bladfläcksjuka  0.6056 3.6565  90.2097  1      10041    
+47                   XGBRegressor  Varkorn_Kornets bladfläcksjuka  0.7772 3.1175  50.9605  1      10041    
+48                           FFNN  Varkorn_Kornets bladfläcksjuka  0.7825 2.8524  49.7436  1      10041    
+49                            SVR  Varkorn_Kornets bladfläcksjuka  0.7899 2.9740  48.0542  1      10041    
+50  HistGradientBoostingRegressor               Hostvete_Mjöldagg  0.8383 2.5820  38.9423  1      19595    
+51          DecisionTreeRegressor               Hostvete_Mjöldagg  0.6739 3.3660  78.5110  1      19595    
+52                   XGBRegressor               Hostvete_Mjöldagg  0.8235 2.7089  42.4914  1      19595    
+53                           FFNN               Hostvete_Mjöldagg  0.8209 2.7610  43.1196  1      19595    
+54                            SVR               Hostvete_Mjöldagg  0.8290 2.7697  41.1727  1      19595    
+55  HistGradientBoostingRegressor        Hostvete_Svartpricksjuka  0.8555 4.3582  58.4733  1      19595    
+56          DecisionTreeRegressor        Hostvete_Svartpricksjuka  0.7104 5.5317 117.1562  1      19595    
+57                   XGBRegressor        Hostvete_Svartpricksjuka  0.8527 4.4130  59.6009  1      19595    
+58                           FFNN        Hostvete_Svartpricksjuka  0.8096 4.9512  77.0319  1      19595    
+59                            SVR        Hostvete_Svartpricksjuka  0.8075 4.7447  77.8651  1      19595    
+60  HistGradientBoostingRegressor       Hostvete_Bladfläcksvampar  0.8268 5.6751  87.9839  1      19595    
+61          DecisionTreeRegressor       Hostvete_Bladfläcksvampar  0.6586 7.2633 173.3959  1      19595    
+62                   XGBRegressor       Hostvete_Bladfläcksvampar  0.8217 5.6883  90.5544  1      19595    
+63                           FFNN       Hostvete_Bladfläcksvampar  0.7869 6.2491 108.2331  1      19595    
+64                            SVR       Hostvete_Bladfläcksvampar  0.7879 5.9619 107.7276  1      19595    

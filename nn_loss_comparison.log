@@ -1,9 +1,0 @@
-Neural Network Loss Function Comparison
-
-Settings: batch_size=96, epochs=100, patience=0, learning_rate=0.0008, layers=[54, 54, 54]
-
-
-Loss Function: mse
-Run 1: R^2 = 0.0335
-Mean R^2 for mse: 0.0335
-
