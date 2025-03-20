@@ -6,7 +6,7 @@ from tensorflow.keras import layers
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 
 class FFNN:
-    def __init__(self, input_shape, quantile=0.55, learning_rate=0.000235, dropout_rate=0.07):
+    def __init__(self, input_shape, quantile=0.55, learning_rate=0.000835, dropout_rate=0.07):
         self.quantile = quantile
         self.learning_rate = learning_rate
         self.dropout_rate = dropout_rate
@@ -36,10 +36,10 @@ class FFNN:
         
         model.add(layers.Dense(1))
         model.compile(optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate),
-                      loss=self._rmse, metrics=['mae'])
+                      loss=self._rmse)
         return model
     
-    def fit(self, X_train, y_train, epochs=20, batch_size=32, patience=5, validation_split=0.2):
+    def fit(self, X_train, y_train, epochs=12, batch_size=32, patience=3, validation_split=0.2):
         early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=patience, restore_best_weights=True)
         history = self.model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size,
                                  validation_split=validation_split, callbacks=[early_stopping], verbose=1)
