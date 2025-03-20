@@ -1,0 +1,10 @@
+activation: leaky_relu
+dropout: 0.07468054507323517
+hidden_sizes:
+- 192
+- 224
+input_size: 17
+learning_rate: 0.00023492087942582194
+loss_fn_name: huber
+output_size: 1
+weight_decay: 8.676935089930829e-06

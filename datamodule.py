@@ -24,7 +24,8 @@ class datamodule:
         self.scaler_y = MinMaxScaler()
 
         self.dependent = datamodule.DISEASES[crop]
-        print('Possible targets', self.dependent)
+        # print('Possible targets', self.dependent)
+        
         self.target = None
 
         self.X = None
@@ -89,8 +90,9 @@ class datamodule:
         test_mask = self.data_gdf['Series_id'].isin(sampled_series)
 
         train_mask = ~(test_mask)
-        print('Training on:',sum(train_mask)/len(train_mask))
-        print('testing on:', sum(test_mask)/len(test_mask))
+
+        # print('Training on:',sum(train_mask)/len(train_mask))
+        # print('testing on:', sum(test_mask)/len(test_mask))
 
         self.X_train, self.X_test = self.X[train_mask], self.X[test_mask]
         self.y_train, self.y_test = self.y[train_mask], self.y[test_mask]
