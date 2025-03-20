@@ -46,7 +46,7 @@ def download_csv(endpoint, directory, filename):
 
     filepath = os.path.join(directory, f"{filename}.csv")
 
-    with requests.get(endpoint, stream=True) as r:
+    with requests.get(endpoint) as r:
         lines = (line.decode('utf-8') for line in r.iter_lines())
         with open(filepath, mode='w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)

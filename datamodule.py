@@ -25,6 +25,7 @@ class datamodule:
 
         self.dependent = datamodule.DISEASES[crop]
         # print('Possible targets', self.dependent)
+        
         self.target = None
 
         self.X = None
@@ -89,6 +90,7 @@ class datamodule:
         test_mask = self.data_gdf['Series_id'].isin(sampled_series)
 
         train_mask = ~(test_mask)
+
         # print('Training on:',sum(train_mask)/len(train_mask))
         # print('testing on:', sum(test_mask)/len(test_mask))
 

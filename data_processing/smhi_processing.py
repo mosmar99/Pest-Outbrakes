@@ -1,5 +1,7 @@
+import numpy as np
 import pandas as pd
 import geopandas as gpd
+import pickle
 
 def clean_stations(smhi_stations_gdf, dropcols=['latitude','longitude', 'summary', 'link', 'id', 'title', 'ownerCategory', 'owner', 'active', 'updated', 'height']):
     """
@@ -109,9 +111,13 @@ def filter_station_data_on_date(smhi_df, from_date, to_date):
     """
     from_mask = (smhi_df["DateTime (UTC)"] > pd.to_datetime(from_date)) & (smhi_df["DateTime (UTC)"] < pd.to_datetime(to_date))
     smhi_df = smhi_df[from_mask]
+
+    numeric = smhi_df.select_dtypes(include=['float64', 'int64']).columns
+    
+
     return smhi_df
 
-def aggregate_smhi_data(smhi_df, how='mean', time_period='W-SUN'):
+def aggregate_smhi_data(smhi_df, how='mean'):
     """
     Data aggregation on datetime for smhi station data dataframe
 
@@ -126,7 +132,7 @@ def aggregate_smhi_data(smhi_df, how='mean', time_period='W-SUN'):
     aggregation = {**{column: how for column in numeric},
                    'station_key': 'first'}
     
-    smhi_df['time_period'] = smhi_df['DateTime (UTC)'].dt.to_period(time_period)
+    smhi_df['time_period'] = smhi_df['DateTime (UTC)'].dt.to_period('D')
     smhi_df = smhi_df.groupby('time_period').agg(aggregation).reset_index()
     smhi_df['DateTime (UTC)'] = smhi_df['time_period'].dt.start_time
     smhi_df = smhi_df.drop('time_period', axis=1)
@@ -135,7 +141,7 @@ def aggregate_smhi_data(smhi_df, how='mean', time_period='W-SUN'):
     smhi_df = smhi_df.rename(columns=names)
     return smhi_df
 
-def process_smhi_data(smhi_df, from_date, to_date, aggregaton_how=['mean'], aggregation_rule='W-SUN'):
+def process_smhi_data(smhi_df, from_date, to_date, aggregaton_how='mean'):
     """
     All in one Station data pre-processing, 
 
@@ -149,122 +155,88 @@ def process_smhi_data(smhi_df, from_date, to_date, aggregaton_how=['mean'], aggr
     """
     smhi_df = clean_station_data(smhi_df)
     smhi_df = filter_station_data_on_date(smhi_df, from_date, to_date)
-    smhi_df = aggregate_smhi_data(smhi_df, aggregaton_how, aggregation_rule)
+    smhi_df = aggregate_smhi_data(smhi_df, aggregaton_how)
     return smhi_df
 
-def find_closest_stations(gdf, smhi_stations_gdf):
-    """
-    Finds closest stations for every row.
-
-    Args:
-        gdf (GeoDataFrame): GeoDataFrame for wich we want to find the nearest stations.
-        smhi_stations_gdf (GeoDataFrame): Data on stations with geometry.
-        
-    Returns:
-        Tuple(GeoDataFrame, List): original gdf with SMHI station key appended. List of unique nearest station keys
-    """
-    # Convert to estimated UTM CRS to achieve accuracy in distances
+def find_closest_n_stations(gdf, stations_gdf:gpd.GeoDataFrame, max_dist=50000, closest_n=4):
     utm_crs = gdf.estimate_utm_crs()
     gdf = gdf.to_crs(utm_crs)
-    smhi_stations_gdf = smhi_stations_gdf.to_crs(utm_crs)
+    stations_gdf = stations_gdf.to_crs(utm_crs)
 
-    # Perform Spatial join by nearest neighbour
-    nearest_gdf = gdf.sjoin_nearest(smhi_stations_gdf, how="left")
-    nearest_gdf = nearest_gdf[~nearest_gdf.index.duplicated(keep='first')]
+    loc_to_stations = {}
+    stations = pd.Series([], name='key')
 
-    gdf["station_key"] = nearest_gdf["key"]
-    return gdf.to_crs("EPSG:4326"), pd.unique(nearest_gdf["key"])
+    locations = gdf['geometry'].unique()
+    for location in locations:
+        # print(location)
+        distances = stations_gdf['geometry'].distance(location).rename('distance')
 
-def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_date, to_date, aggregation_rule='W-SUN'):
-    """
-    Standard function for gathering closest weather data into a gdf
+        stations_gdf_dist = pd.concat([stations_gdf, distances], axis=1)
+        filtered_stations_gdf = stations_gdf_dist[stations_gdf_dist['distance'] < max_dist]
 
-    Args:
-        gdf (GeoDataFrame): GeoDataFrame for wich we want to find the nearest stations.
-        params (List(Tuple(String, String))): List of tuple with parameter id to get, and aggregation type ex. 'mean', 'sum', 'max', 'min'
-        f_get_stations (GeoDataFrame): Function for getting data on stations.
-        f_get_station_data (GeoDataFrame): Function for getting weatherdata from stations.
-        from_date (String): from date, for filtering in data.
-        to_date (String): to date, for filtering in data.
-        aggregation_rule (String): Aggregation rule, uses pandas aggregation rules
+        filtered_stations_gdf = filtered_stations_gdf.sort_values(by='distance', ascending=True)
         
-    Returns:
-        Tuple(GeoDataFrame, List): original gdf with SMHI station key appended. List of unique nearest station keys
-    """
+        loc_to_stations[location] = filtered_stations_gdf[['key', 'distance']].head(closest_n)
+        stations = pd.concat([stations, filtered_stations_gdf['key'].head(closest_n)], axis=0)
+    
+    return loc_to_stations, stations.unique(), utm_crs
+
+def gather_weather_data(gdf, params, f_get_stations, f_get_station_data, from_date, to_date, weekly=False, max_dist=float('inf'), closest_n=4):
+    all_parameter_data = {}
     for param_id, aggregaton_how in params:
         stations_gdf = f_get_stations(param_id)
         stations_gdf = process_stations(stations_gdf, from_date, to_date)
+        loc_to_stations, unique_stations, utm_crs = find_closest_n_stations(gdf, stations_gdf, max_dist=max_dist, closest_n=closest_n)
+        gdf = gdf.to_crs(utm_crs)
+        
+        # Gather all data for parameter
+        all_station_data = pd.date_range(start=pd.to_datetime(from_date), end=pd.to_datetime(to_date), freq='D').to_series().rename('DateTime (UTC)')
+        param_name = None
+        for key in unique_stations:
+            station_data_df = f_get_station_data(key, param_id)
+            station_data_df = process_smhi_data(station_data_df, from_date, to_date, aggregaton_how)
 
-        gdf, stations_to_get = find_closest_stations(gdf, stations_gdf)
+            numeric = station_data_df.select_dtypes(include=['float64', 'int64']).columns
+            if param_name == None:
+                param_name = numeric[0]
+            station_data_df = station_data_df.rename(columns={name: key for name in numeric})
 
-        parameter_data = pd.DataFrame()
-        for station_key in stations_to_get:
-            station_data_df = f_get_station_data(station_key, param_id)
-            station_data_df = process_smhi_data(station_data_df, from_date, to_date, aggregaton_how, aggregation_rule)
-            parameter_data = pd.concat([parameter_data, station_data_df])
+            relevant_cols = station_data_df.select_dtypes(include=['float64', 'int64', 'datetime64']).columns
+            all_station_data = pd.merge(all_station_data, station_data_df[relevant_cols], how='left', on='DateTime (UTC)')
 
-        gdf = gdf.merge(parameter_data,
-                            how='left',
-                            left_on=['graderingsdatum', 'station_key'],
-                            right_on=['DateTime (UTC)', 'station_key'])
+            all_parameter_data[param_name] = all_station_data
 
-        gdf = gdf.drop(['station_key', 'DateTime (UTC)'], axis=1)
+        weather_data = []
+        for location, stations in loc_to_stations.items():
+            stations_to_use = stations['key'].to_list()
+            vals = all_station_data[stations_to_use].mean(axis=1, skipna=True).rename(param_name)
+            vals = pd.concat([all_station_data['DateTime (UTC)'], vals], axis=1)
+            if weekly:
+                vals = vals.rolling(window=7, center=False, on='DateTime (UTC)').agg(aggregaton_how)
+            vals['geometry'] = location
+            weather_data.append(vals)
+        
+        weather_data_df = pd.concat(weather_data, axis=0).rename(columns={'DateTime (UTC)': 'graderingsdatum'})
+        gdf = pd.merge(gdf, weather_data_df, on=['graderingsdatum', 'geometry'], how='left')
+        print('GOT SMHI PARAMETER:', param_name)
 
-    return gdf
+    return gdf.to_crs("EPSG:4326")
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from shapely.geometry import LineString, Point
     import smhi_api
-    # """
-    # Example usage of module
-    # """
-    from_date = '2020-01-01'
-    to_date = '2021-01-01'
-    param_id = "2"
-    param_id_2 = "5"
-    param_id_3 = "10"
-    params = [(param_id, 'mean'), (param_id_2, 'sum'), (param_id_3, 'sum')]
 
-    # smhi_stations_gdf = smhi_api.get_stations_on_parameter_id(param_id)
-    # smhi_stations_gdf = process_stations(smhi_stations_gdf, from_date, to_date)
+    with open('wdata.pickle', 'rb') as handle:
+        all_parameter_data:pd.DataFrame = pickle.load(handle)
+    
+    humidity_df = all_parameter_data['Relativ Luftfuktighet_mean'].set_index('DateTime (UTC)')
+    rain_df = all_parameter_data['Nederbördsmängd_sum'].set_index('DateTime (UTC)')
 
-    # print(smhi_stations_gdf)
+    print(humidity_df.columns)
+    print(humidity_df.columns.intersection(rain_df.columns))
+    common = humidity_df.columns.intersection(rain_df.columns)
 
-    # smhi_df = smhi_api.get_station_data_on_key_param("188790", param_id)
-    # smhi_df = process_smhi_data(smhi_df, from_date, to_date)
-    # smhi_df = aggregate_smhi_data(smhi_df)
-    # print(smhi_df)
+    for station in common:
+        pass
 
-    # Define three example points in Sweden
-    data = {
-        "Name": ["Stockholm", "Stockholm", "Stockholm",
-                "Gothenburg", "Gothenburg", "Gothenburg",
-                "Malmö", "Malmö", "Malmö"],
-        "geometry": [
-            Point(18.0686, 59.3293), Point(18.0686, 59.3293), Point(18.0686, 59.3293),
-            Point(11.9746, 57.7089), Point(11.9746, 57.7089), Point(11.9746, 57.7089),
-            Point(13.0038, 55.6049), Point(13.0038, 55.6049), Point(13.0038, 55.6049)
-        ],
-        "graderingsdatum": [
-            pd.Timestamp("2020-01-06"), pd.Timestamp("2020-01-13"), pd.Timestamp("2020-01-20"),
-            pd.Timestamp("2020-01-06"), pd.Timestamp("2020-01-13"), pd.Timestamp("2020-01-20"),
-            pd.Timestamp("2020-01-06"), pd.Timestamp("2020-01-13"), pd.Timestamp("2020-01-20")
-        ]
-    }
-
-    # Create a GeoDataFrame
-    gdf = gpd.GeoDataFrame(data, crs="EPSG:4326")
-
-    gdf = gather_weather_data(  gdf,
-                                params,
-                                smhi_api.get_stations_on_parameter_id,
-                                smhi_api.get_station_data_on_key_param,
-                                from_date,
-                                to_date)
-
-    print(gdf)
-    # smhi_gdf = get_station_data_on_key_param("188790", "21", from_date, to_date)
-    # # smhi_gdf = get_station_data_on_key_param("154860", "19", from_date, to_date)
-
-    # print(smhi_gdf)

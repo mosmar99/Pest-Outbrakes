@@ -54,7 +54,7 @@ def get_pests_linked_to_gradings():
     """
     return api.fetch_data(URI["pests_linked_to_gradings"], auth=auth_details)
 
-def get_gradings(from_date="2019-08-04", to_date="2019-11-22", groda="Potatis", skadegorare="Bladlus"):
+def get_gradings(from_date="2019-08-04", to_date="2019-11-22", groda="Potatis", skadegorare=None):
     """
     Fetches grading data for a date range, crop, and pest from the API.
 
@@ -67,7 +67,11 @@ def get_gradings(from_date="2019-08-04", to_date="2019-11-22", groda="Potatis", 
     Returns:
         data_df (json): Raw api output
     """
-    endpoint = f"{URI['gradings']}?fran={from_date}&till={to_date}&groda={groda}&skadegorare={skadegorare}"
+    endpoint = f"{URI['gradings']}?fran={from_date}&till={to_date}"
+    if groda is not None:
+        endpoint += f'&groda={groda}'
+    if skadegorare is not None:
+        endpoint += f'&skadegorare={skadegorare}'
     return api.fetch_data(endpoint, auth=auth_details)
 
 def get_update_information():
