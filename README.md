@@ -1,4 +1,4 @@
-# 🌾 Pest Outbreak Prediction Using Machine Learning
+# Pest Outbreak Prediction Using Machine Learning
 
 This project explores a wide range of Machine Learning and Deep Learning methods to predict **crop disease severity one week ahead**, using agricultural data from Jordbruksverket and weather data from SMHI. The goal is to support farmers and authorities with early warnings that can reduce pesticide use, improve yield, and create more sustainable crop protection strategies.
 
