@@ -4,23 +4,23 @@ This project explores a wide range of Machine Learning and Deep Learning methods
 
 ---
 
-## 📌 Overview
+## Overview
 
 From 2016 to 2023, weekly Swedish crop health observations were combined with meteorological data to build a comprehensive dataset covering multiple crops and pests:
 
-### **Crops**
-- Höstvete  
-- Rågvete  
-- Vårkorn  
+### Grödor / Crops
+- Höstvete: Winter wheat
+- Rågvete: Triticale
+- Vårkorn: Spring barley
 
-### **Pests**
+### Skadegörare / Pests
 Including (but not limited to):
-- Bladfläcksvampar  
-- Brunrost  
-- Svartpricksjuka  
-- Gulrost  
-- Mjöldagg  
-- Sköldfläcksjuka  
+- Bladfläcksvampar: Leaf spot fungi
+- Brunrost: Brown rust
+- Svartpricksjuka: Septoria leaf blotch
+- Gulrost: Yellow rust
+- Mjöldagg: Powdery mildew
+- Sköldfläcksjuka: Tan spot
 
 The project evaluates the forecasting performance of several ML and DL models:
 
@@ -33,7 +33,7 @@ The project evaluates the forecasting performance of several ML and DL models:
 
 ---
 
-## 🌟 Key Findings
+## Key Findings
 
 - **HistGradientBoostingRegressor achieved the strongest predictive performance**, with an R² up to **0.88** for certain crop–pest combinations.
 - **Lagged target features** (the previous week’s pest severity) were the most influential predictors across all datasets.
@@ -50,7 +50,7 @@ Example results for the best model (HGBR):
 
 ---
 
-## 📊 Data & Features
+## Data & Features
 
 ### **Data Sources**
 - **Jordbruksverket (Prognos & Varnings API)**  
@@ -68,7 +68,7 @@ Example results for the best model (HGBR):
 
 ---
 
-## 🧠 Modeling Approach
+## Modeling Approach
 
 ### **Models Evaluated**
 - Gradient Boosting (HGBR, XGBR)
@@ -89,7 +89,7 @@ Example results for the best model (HGBR):
 
 ---
 
-## 🚀 Impact & Use Cases
+## Impact & Use Cases
 
 Accurate short-term forecasts enable:
 
@@ -103,7 +103,7 @@ A model that captures rising pest levels even **one week earlier** can make the 
 
 ---
 
-## 🔮 Future Work
+## Future Work
 
 The project report outlines several improvements:
 
@@ -116,11 +116,11 @@ The project report outlines several improvements:
 
 ---
 
-## 👥 Authors
+## Authors
 
-Mahmut Osmanovic  
-Isac Paulsson  
-Sebastian Tuura  
-Simon De Reuver  
-Ivo Österberg Nilsson  
+1. Mahmut Osmanovic  
+2. Isac Paulsson  
+3. Sebastian Tuura  
+4. Simon De Reuver  
+5. Ivo Österberg Nilsson  
 
